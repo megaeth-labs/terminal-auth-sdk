@@ -11,8 +11,9 @@ interface RequestArguments {
 
   interface TerminalSDKConfig {
     clientId: string;
-    baseUrl?: string;          // defaults to production
-    autoConnect?: boolean;      // defaults to true
+    baseUrl?: string;
+    terminalOrigin?: string;
+    autoConnect?: boolean;
   }
 
   interface Profile {
@@ -21,11 +22,25 @@ interface RequestArguments {
     username: string;
   }
 
+  interface ConnectResult {
+    accessToken: string;
+    profileId: string;
+  }
+
+  type ConnectionState = 'connected' | 'disconnected' | 'connecting';
+
   interface TerminalSDK {
     config: TerminalSDKConfig;
     provider: EIP1193Provider;
-    connect: (provider: EIP1193Provider) => Promise<void>;
+    connect: (provider: EIP1193Provider) => Promise<ConnectResult>;
+    disconnect: () => Promise<void>;
     getProfile: () => Promise<Profile>;
-    getConnectionState(): 'connected' | 'disconnected' | 'connecting';
-    onConnectionStateChange(callback: (state: 'connected' | 'disconnected' | 'connecting') => void): void;
+    getConnectionState(): ConnectionState;
+    on(event: 'stateChange', callback: (state: ConnectionState) => void): void;
+    on(event: 'error', callback: (error: Error) => void): void;
+    off(event: 'stateChange', callback: (state: ConnectionState) => void): void;
+    off(event: 'error', callback: (error: Error) => void): void;
+    openTerminalProfile(): void;
   }
+
+  export type { TerminalSDKConfig, Profile, TerminalSDK, ConnectionState, EIP1193Provider, ConnectResult };
