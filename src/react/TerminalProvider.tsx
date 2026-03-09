@@ -1,0 +1,51 @@
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { TerminalClient } from "../core/client";
+import type {
+  ConnectionState,
+  EIP1193Provider,
+  TerminalSDKConfig,
+} from "../core/types";
+import { TerminalContext } from "./context";
+
+interface TerminalProviderProps {
+  config: TerminalSDKConfig;
+  children: ReactNode;
+}
+
+export function TerminalProvider({ config, children }: TerminalProviderProps) {
+  const [client] = useState(() => new TerminalClient(config));
+  const [state, setState] = useState<ConnectionState>("disconnected");
+
+  useEffect(() => {
+    const onStateChange = (newState: ConnectionState) => setState(newState);
+    client.on("stateChange", onStateChange);
+    return () => client.off("stateChange", onStateChange);
+  }, [client]);
+
+  const connect = useCallback(
+    (provider: EIP1193Provider) => client.connect(provider),
+    [client]
+  );
+
+  const disconnect = useCallback(() => client.disconnect(), [client]);
+
+  const getProfile = useCallback(() => client.getProfile(), [client]);
+
+  const openTerminalProfile = useCallback(
+    () => client.openTerminalProfile(),
+    [client]
+  );
+
+  return (
+    <TerminalContext.Provider
+      value={{ state, connect, disconnect, getProfile, openTerminalProfile, client }}
+    >
+      {children}
+    </TerminalContext.Provider>
+  );
+}
