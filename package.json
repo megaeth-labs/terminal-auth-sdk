@@ -1,7 +1,17 @@
 {
-  "name": "terminal-auth-sdk",
-  "version": "0.0.0",
+  "name": "@megaeth-labs/terminal-auth-sdk",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/megaeth-labs/terminal-auth-sdk.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
