@@ -31,7 +31,6 @@ interface RequestArguments {
 
   interface TerminalSDK {
     config: TerminalSDKConfig;
-    provider: EIP1193Provider;
     connect: (provider: EIP1193Provider) => Promise<ConnectResult>;
     disconnect: () => Promise<void>;
     getProfile: () => Promise<Profile>;

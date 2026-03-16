@@ -41,11 +41,11 @@ export class TerminalClient {
     try {
       const address = await this.getAddress(provider);
 
-      const { challengeId, typedData } = await this.requestNonce(address);
+      const { challengeId, eip712Data } = await this.requestNonce(address);
 
       const { codeVerifier, codeChallenge } = await generatePKCEPair();
 
-      const signature = await this.signChallenge(provider, address, typedData);
+      const signature = await this.signChallenge(provider, address, eip712Data);
 
       const verifyResult = await this.verifySignature(
         challengeId,
@@ -55,10 +55,12 @@ export class TerminalClient {
 
       let authCode: string;
 
-      if (verifyResult.code) {
+      if (verifyResult.status === "linked" && verifyResult.code) {
         authCode = verifyResult.code;
       } else {
-        const popupUrl = `${this.terminalOrigin}/link?challengeId=${challengeId}&clientId=${this.config.clientId}`;
+        const popupUrl =
+          verifyResult.authorizeUrl ??
+          `${this.terminalOrigin}/link?challenge_id=${challengeId}`;
         authCode = await openPopupAndWaitForCode({
           url: popupUrl,
           expectedOrigin: this.terminalOrigin,
@@ -86,7 +88,7 @@ export class TerminalClient {
       throw new Error("Not connected");
     }
 
-    await this.fetchJSON("POST", "/auth/disconnect", undefined, true);
+    await this.fetchJSON("DELETE", "/api/v1/delete-wallet", undefined, true);
 
     this.accessToken = null;
     this.setState("disconnected");
@@ -96,7 +98,7 @@ export class TerminalClient {
     if (!this.accessToken) {
       throw new Error("Not connected");
     }
-    return this.fetchJSON<Profile>("GET", "/profile", undefined, true);
+    return this.fetchJSON<Profile>("GET", "/api/v1/profile", undefined, true);
   }
 
   getConnectionState(): ConnectionState {
@@ -142,9 +144,9 @@ export class TerminalClient {
 
   private async requestNonce(
     address: string
-  ): Promise<{ challengeId: string; typedData: object }> {
-    return this.fetchJSON("POST", "/auth/nonce", {
-      address,
+  ): Promise<{ challengeId: string; nonce: string; eip712Data: object }> {
+    return this.fetchJSON("POST", "/api/v1/auth/nonce", {
+      wallet: address,
       clientId: this.config.clientId,
     });
   }
@@ -152,11 +154,11 @@ export class TerminalClient {
   private async signChallenge(
     provider: EIP1193Provider,
     address: string,
-    typedData: object
+    eip712Data: object
   ): Promise<string> {
     return (await provider.request({
       method: "eth_signTypedData_v4",
-      params: [address, JSON.stringify(typedData)],
+      params: [address, JSON.stringify(eip712Data)],
     })) as string;
   }
 
@@ -164,11 +166,12 @@ export class TerminalClient {
     challengeId: string,
     signature: string,
     codeChallenge: string
-  ): Promise<{ code?: string; linkRequired?: boolean }> {
-    return this.fetchJSON("POST", "/auth/verify", {
+  ): Promise<{ status: string; code?: string; authorizeUrl?: string }> {
+    return this.fetchJSON("POST", "/api/v1/auth/verify-signature", {
       challengeId,
       signature,
       codeChallenge,
+      codeChallengeMethod: "S256",
     });
   }
 
@@ -176,11 +179,21 @@ export class TerminalClient {
     code: string,
     codeVerifier: string
   ): Promise<ConnectResult> {
-    return this.fetchJSON("POST", "/auth/token", {
+    const res = await this.fetchJSON<{
+      accessToken: string;
+      tokenType: string;
+      expiresIn: number;
+    }>("POST", "/api/v1/auth/token", {
+      grantType: "authorization_code",
       code,
       codeVerifier,
       clientId: this.config.clientId,
     });
+
+    return {
+      accessToken: res.accessToken,
+      profileId: "",
+    };
   }
 
   private async fetchJSON<T>(
@@ -208,6 +221,7 @@ export class TerminalClient {
       throw new Error(`API error ${res.status}: ${text}`);
     }
 
-    return res.json() as Promise<T>;
+    const json = await res.json();
+    return (json.data ?? json) as T;
   }
 }

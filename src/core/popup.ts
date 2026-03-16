@@ -26,8 +26,10 @@ export function openPopupAndWaitForCode(options: PopupOptions): Promise<string> 
       clearTimeout(timeout);
     };
 
+    const popupOrigin = new URL(url).origin;
+
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== expectedOrigin) return;
+      if (event.origin !== expectedOrigin && event.origin !== popupOrigin) return;
 
       const code = event.data?.code;
       if (typeof code !== "string") return;
