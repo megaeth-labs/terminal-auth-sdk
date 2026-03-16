@@ -19,6 +19,7 @@
   ],
   "scripts": {
     "dev": "vite",
+    "dev:examples": "pnpm --filter example-consent dev & PORT=3001 pnpm --filter nextjs dev & wait",
     "build": "tsc -b && vite build && tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "preview": "vite preview"
