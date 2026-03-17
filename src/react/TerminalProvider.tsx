@@ -36,6 +36,8 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
 
   const getProfile = useCallback(() => client.getProfile(), [client]);
 
+  const getStats = useCallback(() => client.getStats(), [client]);
+
   const openTerminalProfile = useCallback(
     () => client.openTerminalProfile(),
     [client]
@@ -43,7 +45,7 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
 
   return (
     <TerminalContext.Provider
-      value={{ state, connect, disconnect, getProfile, openTerminalProfile, client }}
+      value={{ state, connect, disconnect, getProfile, getStats, openTerminalProfile, client }}
     >
       {children}
     </TerminalContext.Provider>

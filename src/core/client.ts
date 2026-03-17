@@ -3,6 +3,7 @@ import type {
   ConnectResult,
   EIP1193Provider,
   Profile,
+  Stats,
   TerminalSDKConfig,
 } from "./types";
 import { TypedEventEmitter } from "./events";
@@ -101,6 +102,13 @@ export class TerminalClient {
     return this.fetchJSON<Profile>("GET", "/api/v1/profile", undefined, true);
   }
 
+  async getStats(): Promise<Stats> {
+    if (!this.accessToken) {
+      throw new Error("Not connected");
+    }
+    return this.fetchJSON<Stats>("GET", "/api/v1/me/stats", undefined, true);
+  }
+
   getConnectionState(): ConnectionState {
     return this.connectionState;
   }
@@ -172,6 +180,7 @@ export class TerminalClient {
       signature,
       codeChallenge,
       codeChallengeMethod: "S256",
+      scope: "read:stats",
     });
   }
 
