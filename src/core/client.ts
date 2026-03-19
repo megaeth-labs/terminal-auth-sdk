@@ -89,8 +89,6 @@ export class TerminalClient {
       throw new Error("Not connected");
     }
 
-    await this.fetchJSON("DELETE", "/api/v1/delete-wallet", undefined, true);
-
     this.accessToken = null;
     this.setState("disconnected");
   }
