@@ -5,6 +5,8 @@ interface RequestArguments {
   
   interface EIP1193Provider {
     request(args: RequestArguments): Promise<unknown>;
+    on(event: 'accountsChanged', listener: (accounts: string[]) => void): void;
+    removeListener(event: 'accountsChanged', listener: (accounts: string[]) => void): void;
   }
 
 

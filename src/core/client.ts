@@ -21,8 +21,11 @@ type SDKEvents = {
 export class TerminalClient {
   private config: TerminalSDKConfig;
   private accessToken: string | null = null;
+  private connectedAddress: string | null = null;
   private connectionState: ConnectionState = "disconnected";
   private emitter = new TypedEventEmitter<SDKEvents>();
+  private connectedProvider: EIP1193Provider | null = null;
+  private accountsChangedHandler: ((accounts: string[]) => void) | null = null;
 
   private get baseUrl(): string {
     return this.config.baseUrl ?? DEFAULT_BASE_URL;
@@ -71,11 +74,15 @@ export class TerminalClient {
       const result = await this.exchangeToken(authCode, codeVerifier);
 
       this.accessToken = result.accessToken;
+      this.connectedAddress = address;
+      this.subscribeAccountChanges(provider);
       this.setState("connected");
 
       return result;
     } catch (err) {
       this.accessToken = null;
+      this.connectedAddress = null;
+      this.unsubscribeAccountChanges();
       this.setState("disconnected");
       const error =
         err instanceof Error ? err : new Error(String(err));
@@ -90,6 +97,8 @@ export class TerminalClient {
     }
 
     this.accessToken = null;
+    this.connectedAddress = null;
+    this.unsubscribeAccountChanges();
     this.setState("disconnected");
   }
 
@@ -111,6 +120,10 @@ export class TerminalClient {
     return this.connectionState;
   }
 
+  getConnectedAddress(): string | null {
+    return this.connectedAddress;
+  }
+
   on<K extends keyof SDKEvents>(
     event: K,
     callback: (payload: SDKEvents[K]) => void
@@ -130,6 +143,33 @@ export class TerminalClient {
   }
 
   // --- Private helpers ---
+
+  private subscribeAccountChanges(provider: EIP1193Provider): void {
+    this.unsubscribeAccountChanges();
+    this.connectedProvider = provider;
+    this.accountsChangedHandler = (accounts: string[]) => {
+      const newAddress = accounts[0]?.toLowerCase();
+      const currentAddress = this.connectedAddress?.toLowerCase();
+      if (!newAddress || newAddress !== currentAddress) {
+        this.accessToken = null;
+        this.connectedAddress = null;
+        this.unsubscribeAccountChanges();
+        this.setState("disconnected");
+      }
+    };
+    provider.on("accountsChanged", this.accountsChangedHandler);
+  }
+
+  private unsubscribeAccountChanges(): void {
+    if (this.connectedProvider && this.accountsChangedHandler) {
+      this.connectedProvider.removeListener(
+        "accountsChanged",
+        this.accountsChangedHandler
+      );
+    }
+    this.connectedProvider = null;
+    this.accountsChangedHandler = null;
+  }
 
   private setState(state: ConnectionState): void {
     this.connectionState = state;

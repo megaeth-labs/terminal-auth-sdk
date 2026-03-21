@@ -10,6 +10,7 @@ import type {
 
 export interface TerminalContextValue {
   state: ConnectionState;
+  address: string | null;
   connect: (provider: EIP1193Provider) => Promise<ConnectResult>;
   disconnect: () => Promise<void>;
   getProfile: () => Promise<Profile>;

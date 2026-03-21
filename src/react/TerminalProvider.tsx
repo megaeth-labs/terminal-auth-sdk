@@ -20,9 +20,13 @@ interface TerminalProviderProps {
 export function TerminalProvider({ config, children }: TerminalProviderProps) {
   const [client] = useState(() => new TerminalClient(config));
   const [state, setState] = useState<ConnectionState>("disconnected");
+  const [address, setAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    const onStateChange = (newState: ConnectionState) => setState(newState);
+    const onStateChange = (newState: ConnectionState) => {
+      setState(newState);
+      setAddress(client.getConnectedAddress());
+    };
     client.on("stateChange", onStateChange);
     return () => client.off("stateChange", onStateChange);
   }, [client]);
@@ -45,7 +49,7 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
 
   return (
     <TerminalContext.Provider
-      value={{ state, connect, disconnect, getProfile, getStats, openTerminalProfile, client }}
+      value={{ state, address, connect, disconnect, getProfile, getStats, openTerminalProfile, client }}
     >
       {children}
     </TerminalContext.Provider>
