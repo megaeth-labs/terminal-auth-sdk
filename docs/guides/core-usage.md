@@ -14,7 +14,7 @@ const client = new TerminalClient({
 
 ## Connecting
 
-Pass any EIP-1193 compatible provider to `connect`. The method resolves with an `accessToken` and `profileId` on success, or throws on failure.
+Pass any EIP-1193 compatible provider to `connect`. The method resolves with an `accessToken` and `expiresIn` on success, or throws on failure.
 
 ```typescript
 await client.connect(window.ethereum);

@@ -37,7 +37,7 @@ sequenceDiagram
     SDK->>API: POST /api/v1/auth/token
     API-->>SDK: accessToken
 
-    SDK-->>App: ConnectResult { accessToken, profileId }
+    SDK-->>App: ConnectResult { accessToken, expiresIn }
 ```
 
 ## Step-by-step

@@ -144,7 +144,7 @@ type ConnectionState = "connected" | "disconnected" | "connecting";
 
 interface ConnectResult {
   accessToken: string;
-  profileId: string;
+  expiresIn: number;
 }
 
 interface EIP1193Provider {

@@ -52,14 +52,14 @@ Returned by `client.connect()` and `context.connect()` on success.
 ```typescript
 interface ConnectResult {
   accessToken: string;
-  profileId: string;
+  expiresIn: number;
 }
 ```
 
 | Field         | Type     | Description                                                                                                                        |
 | ------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `accessToken` | `string` | Bearer token for authenticated API requests. Held internally by the client and used automatically for `getStats`. |
-| `profileId`   | `string` | The linked Terminal profile ID.                                                                                                    |
+| `expiresIn`   | `number` | Token lifetime in seconds. The client tracks expiry automatically and rejects calls after the token expires.                        |
 
 ---
 
@@ -69,19 +69,15 @@ Returned by `client.getStats()`.
 
 ```typescript
 interface Stats {
-  seasonId: number;
-  rankPosition: number;
-  lastWeekPoints: number;
+  rank: number;
   totalPoints: number;
 }
 ```
 
-| Field            | Type     | Description                                         |
-| ---------------- | -------- | --------------------------------------------------- |
-| `seasonId`       | `number` | The current season identifier.                      |
-| `rankPosition`   | `number` | The user's rank position within the current season. |
-| `lastWeekPoints` | `number` | Points earned in the last 7 days.                   |
-| `totalPoints`    | `number` | Total points accumulated in the current season.     |
+| Field         | Type     | Description                                     |
+| ------------- | -------- | ----------------------------------------------- |
+| `rank`        | `number` | The user's rank position within the current season. |
+| `totalPoints` | `number` | Total points accumulated in the current season.     |
 
 ---
 
