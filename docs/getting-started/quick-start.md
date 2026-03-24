@@ -4,7 +4,7 @@
 
 ### 1. Wrap your app with `TerminalProvider`
 
-Add `TerminalProvider` near the root of your component tree. Pass your `clientId` in the config.
+Add `TerminalProvider` near the root of your component tree. Pass your `clientId` in the config. Client IDs are provided by the MegaETH team to partner applications.
 
 ```tsx
 import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";

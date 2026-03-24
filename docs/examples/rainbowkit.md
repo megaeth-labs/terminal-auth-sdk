@@ -87,9 +87,7 @@ cp examples/rainbowkit/.env.example examples/rainbowkit/.env
 
 | Variable | Description |
 |---|---|
-| `VITE_TERMINAL_CLIENT_ID` | Your Terminal client ID |
-| `VITE_TERMINAL_API_URL` | API base URL (defaults to `https://api.terminal.megaeth.com`) |
-| `VITE_TERMINAL_ORIGIN` | Terminal origin for the consent popup (defaults to `https://terminal.megaeth.com`) |
+| `VITE_TERMINAL_CLIENT_ID` | Your Terminal client ID (provided by the MegaETH team) |
 
 ## How it works
 

@@ -22,7 +22,7 @@ import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";
 
 | Prop       | Type                | Required | Description                                                               |
 | ---------- | ------------------- | -------- | ------------------------------------------------------------------------- |
-| `config`   | `TerminalSDKConfig` | Yes      | SDK configuration. See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
+| `config`   | `TerminalSDKConfig` | Yes      | SDK configuration. Only `clientId` is required (provided by the MegaETH team). See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
 | `children` | `ReactNode`         | Yes      | Component tree that will have access to the context.                      |
 
 The provider creates one `TerminalClient` on mount and keeps it stable for the lifetime of the component. State changes from the client are synced to React state automatically.

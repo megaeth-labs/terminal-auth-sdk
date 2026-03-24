@@ -72,7 +72,7 @@ The SDK sends the `challengeId`, `signature`, and `codeChallenge` to `/api/v1/au
 
 If the wallet is not linked, the SDK opens the `authorizeUrl` in a 500×600px popup window. The popup is hosted by Terminal and walks the user through linking their Terminal account. When the user approves, the popup sends a `postMessage` back to the opener with `{ code }` and closes itself.
 
-The SDK listens for this message and validates that it came from the expected origin (`terminal.megaeth.com` by default). If the user closes the popup manually, the flow times out after 2 minutes and throws an error.
+The SDK listens for this message and validates that it came from the expected Terminal origin. If the user closes the popup manually, the flow times out after 2 minutes and throws an error.
 
 ### 7. Token exchange
 

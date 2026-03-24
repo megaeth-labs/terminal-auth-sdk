@@ -18,7 +18,7 @@ new TerminalClient(config: TerminalSDKConfig)
 
 | Parameter | Type                | Description                                                               |
 | --------- | ------------------- | ------------------------------------------------------------------------- |
-| `config`  | `TerminalSDKConfig` | SDK configuration. See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
+| `config`  | `TerminalSDKConfig` | SDK configuration. Only `clientId` is required (provided by the MegaETH team). See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
 
 **Example**
 
@@ -133,4 +133,4 @@ Removes a previously registered listener. The `callback` reference must match th
 openTerminalProfile(): void
 ```
 
-Opens `https://terminal.megaeth.com/profile` in a new browser tab. Does not require an active connection.
+Opens the user's Terminal profile page in a new browser tab. Does not require an active connection.

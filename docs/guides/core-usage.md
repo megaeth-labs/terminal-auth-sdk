@@ -70,7 +70,7 @@ const address = client.getConnectedAddress();
 
 ```typescript
 client.openTerminalProfile();
-// Opens https://terminal.megaeth.com/profile in a new tab
+// Opens the user's Terminal profile in a new tab
 ```
 
 ## Full example

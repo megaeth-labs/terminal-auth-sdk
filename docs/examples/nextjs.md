@@ -99,9 +99,7 @@ cp examples/nextjs/.env.local.example examples/nextjs/.env.local
 
 | Variable | Description |
 |---|---|
-| `NEXT_PUBLIC_TERMINAL_CLIENT_ID` | Your Terminal client ID |
-| `NEXT_PUBLIC_TERMINAL_API_URL` | API base URL (defaults to `https://api.terminal.megaeth.com`) |
-| `NEXT_PUBLIC_TERMINAL_ORIGIN` | Terminal origin for the consent popup (defaults to `https://terminal.megaeth.com`) |
+| `NEXT_PUBLIC_TERMINAL_CLIENT_ID` | Your Terminal client ID (provided by the MegaETH team) |
 
 All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser.
 

@@ -9,8 +9,10 @@ import { TypedEventEmitter } from "./events";
 import { generatePKCEPair } from "./pkce";
 import { openPopupAndWaitForCode } from "./popup";
 
-const DEFAULT_BASE_URL = "https://api.terminal.megaeth.com";
-const DEFAULT_TERMINAL_ORIGIN = "https://terminal.megaeth.com";
+const DEFAULT_BASE_URL =
+  "https://terminal-backend-git-staging-mega-eth.vercel.app";
+const DEFAULT_TERMINAL_ORIGIN =
+  "https://terminal-frontend-temp-nine.vercel.app";
 
 type SDKEvents = {
   stateChange: ConnectionState;

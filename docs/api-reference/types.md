@@ -16,18 +16,12 @@ Configuration passed to `TerminalClient` and `TerminalProvider`.
 ```typescript
 interface TerminalSDKConfig {
   clientId: string;
-  baseUrl?: string;
-  terminalOrigin?: string;
-  autoConnect?: boolean;
 }
 ```
 
-| Field            | Type      | Required | Default                            | Description                                                                                            |
-| ---------------- | --------- | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `clientId`       | `string`  | Yes      | —                                  | Your application's Terminal client ID.                                                                 |
-| `baseUrl`        | `string`  | No       | `https://api.terminal.megaeth.com` | Terminal API base URL. Override for self-hosted or staging environments.                               |
-| `terminalOrigin` | `string`  | No       | `https://terminal.megaeth.com`     | Origin of the Terminal consent popup. Must match the origin the popup uses when sending `postMessage`. |
-| `autoConnect`    | `boolean` | No       | —                                  | Reserved for future use.                                                                               |
+| Field      | Type     | Required | Default | Description                                                                                                  |
+| ---------- | -------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `clientId` | `string` | Yes      | —       | Your application's Terminal client ID. Provided by the MegaETH team to partner applications. |
 
 ---
 

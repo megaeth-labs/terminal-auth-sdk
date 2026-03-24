@@ -79,11 +79,11 @@ await client.disconnect();
 
 ```typescript
 interface TerminalSDKConfig {
-  clientId: string; // Required — your app's client ID
-  baseUrl?: string; // API base URL (default: https://api.terminal.megaeth.com)
-  terminalOrigin?: string; // Terminal UI origin (default: https://terminal.megaeth.com)
+  clientId: string; // Required — provided by the MegaETH team
 }
 ```
+
+The `clientId` is issued by the MegaETH team to partner applications. Reach out to the team to obtain yours.
 
 ## API Reference
 
