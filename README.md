@@ -63,12 +63,12 @@ function App() {
 import { useTerminal } from "@megaeth-labs/terminal-auth-sdk";
 
 function ConnectButton() {
-  const { state, connect, disconnect, getProfile, openTerminalProfile } = useTerminal();
+  const { state, connect, disconnect, openTerminalProfile } = useTerminal();
 
   const handleConnect = async () => {
     const provider = window.ethereum; // or any EIP-1193 provider
-    const result = await connect(provider);
-    console.log("Connected:", result.accessToken);
+    await connect(provider);
+    console.log("Connected to Terminal");
   };
 
   return (
@@ -87,12 +87,12 @@ import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk/core";
 const client = new TerminalClient({ clientId: "your-client-id" });
 
 // Connect — opens consent popup if wallet is not yet linked
-const result = await client.connect(provider);
-console.log(result.accessToken);
+await client.connect(provider);
+console.log("Connected to Terminal");
 
-// Fetch profile
-const profile = await client.getProfile();
-console.log(profile.username, profile.rank, profile.points);
+// Fetch stats
+const stats = await client.getStats();
+console.log(stats.rank, stats.totalPoints);
 
 // Disconnect (unlinks wallet)
 await client.disconnect();
@@ -102,9 +102,9 @@ await client.disconnect();
 
 ```typescript
 interface TerminalSDKConfig {
-  clientId: string;           // Required — your app's client ID
-  baseUrl?: string;           // API base URL (default: https://api.terminal.megaeth.com)
-  terminalOrigin?: string;    // Terminal UI origin (default: https://terminal.megaeth.com)
+  clientId: string; // Required — your app's client ID
+  baseUrl?: string; // API base URL (default: https://api.terminal.megaeth.com)
+  terminalOrigin?: string; // Terminal UI origin (default: https://terminal.megaeth.com)
 }
 ```
 
@@ -113,13 +113,12 @@ interface TerminalSDKConfig {
 ### `TerminalClient`
 
 ```typescript
-client.connect(provider)         // Authenticate wallet → consent → token exchange
-client.disconnect()              // Unlink wallet and clear token
-client.getProfile()              // → { username, rank, points }
-client.getConnectionState()      // → "connected" | "disconnected" | "connecting"
-client.openTerminalProfile()     // Open Terminal profile in new tab
-client.on(event, callback)       // Listen to "stateChange" | "error"
-client.off(event, callback)      // Remove listener
+client.connect(provider); // Authenticate wallet → consent → token exchange
+client.disconnect(); // Unlink wallet and clear token
+client.getConnectionState(); // → "connected" | "disconnected" | "connecting"
+client.openTerminalProfile(); // Open Terminal profile in new tab
+client.on(event, callback); // Listen to "stateChange" | "error"
+client.off(event, callback); // Remove listener
 ```
 
 ### React
@@ -133,7 +132,6 @@ const {
   state,                // ConnectionState
   connect,              // (provider: EIP1193Provider) => Promise<ConnectResult>
   disconnect,           // () => Promise<void>
-  getProfile,           // () => Promise<Profile>
   openTerminalProfile,  // () => void
   client,               // TerminalClient instance (for advanced usage)
 } = useTerminal();
@@ -149,14 +147,11 @@ interface ConnectResult {
   profileId: string;
 }
 
-interface Profile {
-  rank: number;
-  points: number;
-  username: string;
-}
-
 interface EIP1193Provider {
-  request(args: { method: string; params?: readonly unknown[] | object }): Promise<unknown>;
+  request(args: {
+    method: string;
+    params?: readonly unknown[] | object;
+  }): Promise<unknown>;
 }
 ```
 

@@ -20,10 +20,10 @@ import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";
 
 ### Props
 
-| Prop | Type | Required | Description |
-|---|---|---|---|
-| `config` | `TerminalSDKConfig` | Yes | SDK configuration. See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
-| `children` | `ReactNode` | Yes | Component tree that will have access to the context. |
+| Prop       | Type                | Required | Description                                                               |
+| ---------- | ------------------- | -------- | ------------------------------------------------------------------------- |
+| `config`   | `TerminalSDKConfig` | Yes      | SDK configuration. See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
+| `children` | `ReactNode`         | Yes      | Component tree that will have access to the context.                      |
 
 The provider creates one `TerminalClient` on mount and keeps it stable for the lifetime of the component. State changes from the client are synced to React state automatically.
 
@@ -47,7 +47,6 @@ const {
   address,
   connect,
   disconnect,
-  getProfile,
   getStats,
   openTerminalProfile,
   client,
@@ -56,16 +55,15 @@ const {
 
 ### Return value
 
-| Property | Type | Description |
-|---|---|---|
-| `state` | `ConnectionState` | Current connection state: `"connected"`, `"connecting"`, or `"disconnected"`. Reactive — updates trigger re-renders. |
-| `address` | `string \| null` | Connected wallet address. `null` when disconnected. Reactive. |
-| `connect` | `(provider: EIP1193Provider) => Promise<ConnectResult>` | Runs the full auth flow with the given provider. |
-| `disconnect` | `() => Promise<void>` | Clears the session. Throws if not connected. |
-| `getProfile` | `() => Promise<Profile>` | Fetches the user's Terminal profile. Throws if not connected. |
-| `getStats` | `() => Promise<Stats>` | Fetches the user's season stats. Throws if not connected. |
-| `openTerminalProfile` | `() => void` | Opens the user's Terminal profile page in a new tab. |
-| `client` | `TerminalClient` | The underlying `TerminalClient` instance. Use for advanced scenarios such as custom event subscriptions. |
+| Property              | Type                                                    | Description                                                                                                          |
+| --------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `state`               | `ConnectionState`                                       | Current connection state: `"connected"`, `"connecting"`, or `"disconnected"`. Reactive — updates trigger re-renders. |
+| `address`             | `string \| null`                                        | Connected wallet address. `null` when disconnected. Reactive.                                                        |
+| `connect`             | `(provider: EIP1193Provider) => Promise<ConnectResult>` | Runs the full auth flow with the given provider.                                                                     |
+| `disconnect`          | `() => Promise<void>`                                   | Clears the session. Throws if not connected.                                                                         |
+| `getStats`            | `() => Promise<Stats>`                                  | Fetches the user's season stats. Throws if not connected.                                                            |
+| `openTerminalProfile` | `() => void`                                            | Opens the user's Terminal profile page in a new tab.                                                                 |
+| `client`              | `TerminalClient`                                        | The underlying `TerminalClient` instance. Use for advanced scenarios such as custom event subscriptions.             |
 
 Throws an error if called outside of a `TerminalProvider`.
 
@@ -85,17 +83,17 @@ import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 
 ```tsx
 <TerminalWidget
-  provider={connectorClient}
+  provider={window.ethereum}
   onError={(err) => console.error(err)}
 />
 ```
 
 ### Props
 
-| Prop | Type | Required | Description |
-|---|---|---|---|
-| `provider` | `EIP1193Provider` | No | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
-| `onError` | `(error: Error) => void` | No | Called when `connect` or the profile fetch fails. |
+| Prop       | Type                     | Required | Description                                                                      |
+| ---------- | ------------------------ | -------- | -------------------------------------------------------------------------------- |
+| `provider` | `EIP1193Provider`        | No       | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
+| `onError`  | `(error: Error) => void` | No       | Called when `connect` or the profile fetch fails.                                |
 
 ### Behavior
 
@@ -103,6 +101,6 @@ import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 
 **Connected state** — renders a display card with the Terminal logo, the truncated wallet address (first 6 + last 4 characters), the user's rank, and their points.
 
-After a successful connect, the widget calls `getProfile` automatically. If `getProfile` fails, the `onError` callback is invoked and the rank/points are not displayed.
+After a successful connect, the widget calls `getStats` automatically. If `getStats` fails, the `onError` callback is invoked and the rank/points are not displayed.
 
 The widget must be used inside a `TerminalProvider`.

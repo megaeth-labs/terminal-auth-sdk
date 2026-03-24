@@ -16,9 +16,9 @@ import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk";
 new TerminalClient(config: TerminalSDKConfig)
 ```
 
-| Parameter | Type | Description |
-|---|---|---|
-| `config` | `TerminalSDKConfig` | SDK configuration. See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
+| Parameter | Type                | Description                                                               |
+| --------- | ------------------- | ------------------------------------------------------------------------- |
+| `config`  | `TerminalSDKConfig` | SDK configuration. See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
 
 **Example**
 
@@ -61,20 +61,6 @@ disconnect(): Promise<void>
 Clears the access token, unsubscribes from wallet account change events, and sets the connection state to `"disconnected"`.
 
 **Throws** `Error("Not connected")` if called when there is no active session.
-
----
-
-### `getProfile`
-
-```typescript
-getProfile(): Promise<Profile>
-```
-
-Fetches the connected user's Terminal profile.
-
-**Throws** `Error("Not connected")` if called before a successful `connect`.
-
-**Returns** a [`Profile`](./types.md#profile) object.
 
 ---
 
@@ -123,10 +109,10 @@ on(event: "error", callback: (error: Error) => void): void
 
 Subscribes to a client event.
 
-| Event | Payload | Description |
-|---|---|---|
-| `stateChange` | `ConnectionState` | Fired whenever the connection state changes. |
-| `error` | `Error` | Fired when `connect` encounters an unrecoverable error. |
+| Event         | Payload           | Description                                             |
+| ------------- | ----------------- | ------------------------------------------------------- |
+| `stateChange` | `ConnectionState` | Fired whenever the connection state changes.            |
+| `error`       | `Error`           | Fired when `connect` encounters an unrecoverable error. |
 
 ---
 

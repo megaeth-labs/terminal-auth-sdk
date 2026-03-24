@@ -22,12 +22,12 @@ interface TerminalSDKConfig {
 }
 ```
 
-| Field | Type | Required | Default | Description |
-|---|---|---|---|---|
-| `clientId` | `string` | Yes | — | Your application's Terminal client ID. |
-| `baseUrl` | `string` | No | `https://api.terminal.megaeth.com` | Terminal API base URL. Override for self-hosted or staging environments. |
-| `terminalOrigin` | `string` | No | `https://terminal.megaeth.com` | Origin of the Terminal consent popup. Must match the origin the popup uses when sending `postMessage`. |
-| `autoConnect` | `boolean` | No | — | Reserved for future use. |
+| Field            | Type      | Required | Default                            | Description                                                                                            |
+| ---------------- | --------- | -------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `clientId`       | `string`  | Yes      | —                                  | Your application's Terminal client ID.                                                                 |
+| `baseUrl`        | `string`  | No       | `https://api.terminal.megaeth.com` | Terminal API base URL. Override for self-hosted or staging environments.                               |
+| `terminalOrigin` | `string`  | No       | `https://terminal.megaeth.com`     | Origin of the Terminal consent popup. Must match the origin the popup uses when sending `postMessage`. |
+| `autoConnect`    | `boolean` | No       | —                                  | Reserved for future use.                                                                               |
 
 ---
 
@@ -37,11 +37,11 @@ interface TerminalSDKConfig {
 type ConnectionState = "connected" | "disconnected" | "connecting";
 ```
 
-| Value | Description |
-|---|---|
-| `"disconnected"` | No active session. Initial state. |
-| `"connecting"` | Auth flow in progress. |
-| `"connected"` | Auth flow completed successfully. An access token is held in memory. |
+| Value            | Description                                                          |
+| ---------------- | -------------------------------------------------------------------- |
+| `"disconnected"` | No active session. Initial state.                                    |
+| `"connecting"`   | Auth flow in progress.                                               |
+| `"connected"`    | Auth flow completed successfully. An access token is held in memory. |
 
 ---
 
@@ -56,30 +56,10 @@ interface ConnectResult {
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `accessToken` | `string` | Bearer token for authenticated API requests. Held internally by the client and used automatically for `getProfile` and `getStats`. |
-| `profileId` | `string` | The linked Terminal profile ID. |
-
----
-
-## Profile
-
-Returned by `client.getProfile()`.
-
-```typescript
-interface Profile {
-  rank: number;
-  points: number;
-  username: string;
-}
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `rank` | `number` | The user's current rank on the Terminal leaderboard. |
-| `points` | `number` | The user's total points. |
-| `username` | `string` | The user's Terminal username. |
+| Field         | Type     | Description                                                                                                                        |
+| ------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `accessToken` | `string` | Bearer token for authenticated API requests. Held internally by the client and used automatically for `getStats`. |
+| `profileId`   | `string` | The linked Terminal profile ID.                                                                                                    |
 
 ---
 
@@ -96,31 +76,37 @@ interface Stats {
 }
 ```
 
-| Field | Type | Description |
-|---|---|---|
-| `seasonId` | `number` | The current season identifier. |
-| `rankPosition` | `number` | The user's rank position within the current season. |
-| `lastWeekPoints` | `number` | Points earned in the last 7 days. |
-| `totalPoints` | `number` | Total points accumulated in the current season. |
+| Field            | Type     | Description                                         |
+| ---------------- | -------- | --------------------------------------------------- |
+| `seasonId`       | `number` | The current season identifier.                      |
+| `rankPosition`   | `number` | The user's rank position within the current season. |
+| `lastWeekPoints` | `number` | Points earned in the last 7 days.                   |
+| `totalPoints`    | `number` | Total points accumulated in the current season.     |
 
 ---
 
 ## EIP1193Provider
 
-Minimal interface for any EIP-1193 compatible wallet provider (e.g. `window.ethereum`, Wagmi connector clients, or MetaMask SDK).
+Minimal interface for any EIP-1193 compatible wallet provider (e.g. `window.ethereum`, a provider from `await connector.getProvider()` in Wagmi, or MetaMask SDK).
 
 ```typescript
 interface EIP1193Provider {
-  request(args: { method: string; params?: readonly unknown[] | object }): Promise<unknown>;
+  request(args: {
+    method: string;
+    params?: readonly unknown[] | object;
+  }): Promise<unknown>;
   on(event: "accountsChanged", listener: (accounts: string[]) => void): void;
-  removeListener(event: "accountsChanged", listener: (accounts: string[]) => void): void;
+  removeListener(
+    event: "accountsChanged",
+    listener: (accounts: string[]) => void,
+  ): void;
 }
 ```
 
 The SDK uses three methods on the provider:
 
-| Method | Used for |
-|---|---|
-| `request({ method: "eth_requestAccounts" })` | Getting the wallet address |
-| `request({ method: "eth_signTypedData_v4", params })` | Signing the EIP-712 challenge |
-| `on("accountsChanged", ...)` / `removeListener(...)` | Detecting wallet account switches |
+| Method                                                | Used for                          |
+| ----------------------------------------------------- | --------------------------------- |
+| `request({ method: "eth_requestAccounts" })`          | Getting the wallet address        |
+| `request({ method: "eth_signTypedData_v4", params })` | Signing the EIP-712 challenge     |
+| `on("accountsChanged", ...)` / `removeListener(...)`  | Detecting wallet account switches |

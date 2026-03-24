@@ -20,7 +20,7 @@ function App({ children }) {
 
 ### 2. Use the `useTerminal` hook
 
-Call `connect` with any EIP-1193 provider (e.g. `window.ethereum` or a Wagmi connector client).
+Call `connect` with any EIP-1193 provider (e.g. `window.ethereum` or a provider resolved from a Wagmi connector via `await connector.getProvider()`).
 
 ```tsx
 import { useTerminal } from "@megaeth-labs/terminal-auth-sdk";
@@ -29,8 +29,8 @@ function ConnectButton() {
   const { state, connect, disconnect } = useTerminal();
 
   const handleConnect = async () => {
-    const result = await connect(window.ethereum);
-    console.log("Access token:", result.accessToken);
+    await connect(window.ethereum);
+    console.log("Connected to Terminal");
   };
 
   if (state === "connected") {
@@ -71,11 +71,11 @@ import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk/core";
 
 const client = new TerminalClient({ clientId: "your-client-id" });
 
-const result = await client.connect(window.ethereum);
-console.log("Access token:", result.accessToken);
+await client.connect(window.ethereum);
+console.log("Connected to Terminal");
 
-const profile = await client.getProfile();
-console.log(profile.username, profile.rank, profile.points);
+const stats = await client.getStats();
+console.log(stats.rank, stats.totalPoints);
 ```
 
 ---

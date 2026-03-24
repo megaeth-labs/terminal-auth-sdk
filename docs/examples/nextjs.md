@@ -44,19 +44,20 @@ Use `useTerminal` to access `state` and `connect` directly. This lets you build 
 ```tsx
 // examples/nextjs/src/pages/index.tsx
 import { useTerminal } from "@megaeth-labs/terminal-auth-sdk";
-import { useAccount, useConnectorClient } from "wagmi";
+import type { EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
+import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const Home = () => {
-  const { isConnected } = useAccount();
-  const { data: connectorClient } = useConnectorClient();
+  const { isConnected, connector } = useAccount();
   const { state, connect } = useTerminal();
 
   const handleTerminalConnect = async () => {
-    if (!connectorClient) return;
+    if (!connector) return;
     try {
-      const result = await connect(connectorClient);
-      console.log("Terminal connected:", result);
+      const provider = await connector.getProvider();
+      await connect(provider as EIP1193Provider);
+      console.log("Terminal connected");
     } catch (err) {
       console.error("Terminal connect failed:", err);
     }
@@ -108,6 +109,6 @@ All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible 
 
 1. The user connects their wallet with RainbowKit.
 2. `isConnected` becomes `true`, which renders the Terminal connect button.
-3. The user clicks the button. `handleTerminalConnect` calls `connect(connectorClient)`.
+3. The user clicks the button. `handleTerminalConnect` resolves an EIP-1193 provider from `connector.getProvider()` and calls `connect(provider)`.
 4. The SDK runs the full auth flow. If the wallet is not linked to a Terminal profile, a consent popup opens.
 5. The `state` value updates from `"connecting"` to `"connected"` on success. The button becomes disabled with the label "Connected to Terminal".

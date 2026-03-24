@@ -42,7 +42,6 @@ function MyComponent() {
     address,
     connect,
     disconnect,
-    getProfile,
     getStats,
     openTerminalProfile,
     client,
@@ -58,29 +57,28 @@ function MyComponent() {
 | `address` | `string \| null` | Connected wallet address, or `null` if not connected. |
 | `connect` | `(provider: EIP1193Provider) => Promise<ConnectResult>` | Runs the full auth flow. |
 | `disconnect` | `() => Promise<void>` | Clears the access token and disconnects. |
-| `getProfile` | `() => Promise<Profile>` | Fetches the user's Terminal profile. Requires an active connection. |
 | `getStats` | `() => Promise<Stats>` | Fetches the user's season stats. Requires an active connection. |
 | `openTerminalProfile` | `() => void` | Opens the user's Terminal profile in a new tab. |
 | `client` | `TerminalClient` | The underlying client instance. Use for advanced scenarios. |
 
-### Example — connect and display profile
+### Example — connect and display stats
 
 ```tsx
 function ConnectButton() {
-  const { state, address, connect, getProfile } = useTerminal();
-  const [profile, setProfile] = useState(null);
+  const { state, address, connect, getStats } = useTerminal();
+  const [stats, setStats] = useState(null);
 
   const handleConnect = async () => {
     await connect(window.ethereum);
-    const p = await getProfile();
-    setProfile(p);
+    const s = await getStats();
+    setStats(s);
   };
 
   if (state === "connected") {
     return (
       <div>
         <p>{address}</p>
-        {profile && <p>Rank {profile.rank} — {profile.points} PT</p>}
+        {stats && <p>Rank {stats.rank} — {stats.totalPoints} PT</p>}
       </div>
     );
   }
@@ -117,7 +115,7 @@ function MyPage() {
 | Prop | Type | Required | Description |
 |---|---|---|---|
 | `provider` | `EIP1193Provider` | No | The wallet provider. The button is disabled until a provider is passed. |
-| `onError` | `(error: Error) => void` | No | Called if `connect` or `getProfile` throws. |
+| `onError` | `(error: Error) => void` | No | Called if `connect` or `getStats` throws. |
 
 ### States
 
@@ -125,7 +123,7 @@ function MyPage() {
 
 **Connected** — renders a card showing the Terminal logo, the truncated wallet address, the user's rank, and their points.
 
-The widget automatically calls `getProfile` after connecting to populate the rank and points display.
+The widget automatically calls `getStats` after connecting to populate the rank and points display.
 
 ### Styling
 

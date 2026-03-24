@@ -35,17 +35,32 @@ createRoot(document.getElementById("root")).render(
 
 ## Using TerminalWidget
 
-Inside your application, use Wagmi's `useConnectorClient` to get the active wallet provider and pass it to `TerminalWidget`. The widget only renders the connect button once the user has connected their wallet.
+Inside your application, resolve the EIP-1193 provider from the active Wagmi connector (`connector.getProvider()`) and pass it to `TerminalWidget`. The widget only renders the connect button once the user has connected their wallet.
 
 ```tsx
 // examples/rainbowkit/src/App.tsx
+import { useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount, useConnectorClient } from "wagmi";
-import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
+import { useAccount } from "wagmi";
+import {
+  TerminalWidget,
+  type EIP1193Provider,
+} from "@megaeth-labs/terminal-auth-sdk";
 
 export function App() {
-  const { isConnected } = useAccount();
-  const { data: connectorClient } = useConnectorClient();
+  const { isConnected, connector } = useAccount();
+  const [provider, setProvider] = useState<EIP1193Provider>();
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!connector) return;
+    connector.getProvider().then((p) => {
+      if (!cancelled) setProvider(p as EIP1193Provider);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [connector]);
 
   return (
     <div>
@@ -53,7 +68,7 @@ export function App() {
 
       {isConnected && (
         <TerminalWidget
-          provider={connectorClient ?? undefined}
+          provider={provider}
           onError={(err) => console.error("Terminal error:", err)}
         />
       )}
@@ -80,7 +95,7 @@ cp examples/rainbowkit/.env.example examples/rainbowkit/.env
 
 1. The user clicks the RainbowKit `ConnectButton` and connects their wallet.
 2. `isConnected` becomes `true`, which renders `TerminalWidget`.
-3. Wagmi's `useConnectorClient` exposes the active connector as an EIP-1193 provider.
+3. The app resolves the active connector's EIP-1193 provider via `connector.getProvider()`.
 4. The user clicks "Connect To Terminal" in the widget.
 5. The SDK runs the full auth flow. If the wallet is not yet linked to a Terminal profile, a consent popup opens.
 6. On success, the widget switches to its connected state, showing the truncated address, rank, and points.

@@ -17,25 +17,18 @@ const client = new TerminalClient({
 Pass any EIP-1193 compatible provider to `connect`. The method resolves with an `accessToken` and `profileId` on success, or throws on failure.
 
 ```typescript
-const result = await client.connect(window.ethereum);
-console.log(result.accessToken);
+await client.connect(window.ethereum);
+console.log("Connected to Terminal");
 ```
 
 ## Fetching data
 
-Both `getProfile` and `getStats` require an active connection. They throw if called when disconnected.
+`getStats` requires an active connection. It throws if called when disconnected.
 
 ```typescript
-const profile = await client.getProfile();
-console.log(profile.username); // "alice"
-console.log(profile.rank);     // 42
-console.log(profile.points);   // 1500
-
 const stats = await client.getStats();
-console.log(stats.seasonId);       // 3
-console.log(stats.rankPosition);   // 42
-console.log(stats.totalPoints);    // 1500
-console.log(stats.lastWeekPoints); // 200
+console.log(stats.rank);        // 42
+console.log(stats.totalPoints); // 1500
 ```
 
 ## Disconnecting
@@ -96,11 +89,11 @@ client.on("error", (err) => {
 });
 
 async function connect() {
-  const result = await client.connect(window.ethereum);
-  console.log("Connected, token:", result.accessToken);
+  await client.connect(window.ethereum);
+  console.log("Connected to Terminal");
 
-  const profile = await client.getProfile();
-  console.log(`${profile.username} — Rank ${profile.rank}`);
+  const stats = await client.getStats();
+  console.log(`Rank ${stats.rank} — ${stats.totalPoints} PT`);
 }
 
 async function disconnect() {
