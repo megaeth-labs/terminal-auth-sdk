@@ -26,7 +26,7 @@ interface RequestArguments {
 
   interface ConnectResult {
     accessToken: string;
-    profileId: string;
+    expiresIn: number;
   }
 
   type ConnectionState = 'connected' | 'disconnected' | 'connecting';

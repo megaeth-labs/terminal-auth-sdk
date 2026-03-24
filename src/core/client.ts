@@ -20,6 +20,7 @@ type SDKEvents = {
 export class TerminalClient {
   private config: TerminalSDKConfig;
   private accessToken: string | null = null;
+  private tokenExpiresAt: number | null = null;
   private connectedAddress: string | null = null;
   private connectionState: ConnectionState = "disconnected";
   private emitter = new TypedEventEmitter<SDKEvents>();
@@ -87,6 +88,7 @@ export class TerminalClient {
       const result = await this.exchangeToken(authCode, codeVerifier);
 
       this.accessToken = result.accessToken;
+      this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
       this.connectedAddress = address;
       this.subscribeAccountChanges(provider);
       this.setState("connected");
@@ -94,6 +96,7 @@ export class TerminalClient {
       return result;
     } catch (err) {
       this.accessToken = null;
+      this.tokenExpiresAt = null;
       this.connectedAddress = null;
       this.unsubscribeAccountChanges();
       this.setState("disconnected");
@@ -110,6 +113,7 @@ export class TerminalClient {
     }
 
     this.accessToken = null;
+    this.tokenExpiresAt = null;
     this.connectedAddress = null;
     this.unsubscribeAccountChanges();
     this.setState("disconnected");
@@ -118,10 +122,14 @@ export class TerminalClient {
 
 
   async getStats(): Promise<Stats> {
-    if (!this.accessToken) {
+    if (!this.accessToken || this.isTokenExpired()) {
       throw new Error("Not connected");
     }
     return this.fetchJSON<Stats>("GET", "/api/v1/me/stats", undefined, true);
+  }
+
+  private isTokenExpired(): boolean {
+    return this.tokenExpiresAt !== null && Date.now() >= this.tokenExpiresAt;
   }
 
   getConnectionState(): ConnectionState {
@@ -160,6 +168,7 @@ export class TerminalClient {
       const currentAddress = this.connectedAddress?.toLowerCase();
       if (!newAddress || newAddress !== currentAddress) {
         this.accessToken = null;
+        this.tokenExpiresAt = null;
         this.connectedAddress = null;
         this.unsubscribeAccountChanges();
         this.setState("disconnected");
@@ -255,7 +264,7 @@ export class TerminalClient {
 
     return {
       accessToken: res.accessToken,
-      profileId: "",
+      expiresIn: res.expiresIn,
     };
   }
 
@@ -273,18 +282,26 @@ export class TerminalClient {
       headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`API error ${res.status}: ${text}`);
+    try {
+      const res = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+
+      const json = await res.json();
+      return (json.data ?? json) as T;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const json = await res.json();
-    return (json.data ?? json) as T;
   }
 }
