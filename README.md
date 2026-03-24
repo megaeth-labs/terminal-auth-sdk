@@ -2,7 +2,7 @@
 
 Authentication SDK for linking wallets to MegaETH Terminal profiles. Handles the full OAuth-style flow: wallet signature challenge, PKCE, consent popup, and token exchange.
 
-> **Access Control**: This package is published as a private package via [GitHub Packages](https://github.com/orgs/megaeth-labs/packages). Only `megaeth-labs` organization members can install it.
+> **Beta**: This library is in beta. The API may change between releases. Mobile app support is not yet available and will be included in the next release, along with an alternative to the popup-based consent flow.
 
 ## Features
 
@@ -14,31 +14,8 @@ Authentication SDK for linking wallets to MegaETH Terminal profiles. Handles the
 
 ## Installation
 
-### 1. Create a GitHub Personal Access Token
-
-Go to [GitHub Settings → Personal access tokens](https://github.com/settings/tokens) and create a **classic token** with the `read:packages` scope.
-
-### 2. Configure `.npmrc`
-
-Create a `.npmrc` file in your project root:
-
-```
-@megaeth-labs:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
-### 3. Set the environment variable
-
 ```bash
-export GITHUB_TOKEN="ghp_your_token_here"
-```
-
-We recommend adding `GITHUB_TOKEN` to your `~/.zshrc` or `~/.bashrc`, or managing it via `.env` files in CI.
-
-### 4. Install
-
-```bash
-pnpm add @megaeth-labs/terminal-auth-sdk
+npm install @megaeth-labs/terminal-auth-sdk
 ```
 
 ## Quick Start (React)
@@ -167,10 +144,7 @@ pnpm lint             # ESLint
 
 ### Publishing
 
-Published to GitHub Packages (`npm.pkg.github.com`).
-
 ```bash
-npm login --registry=https://npm.pkg.github.com   # PAT needs write:packages scope
 pnpm build
 npm publish
 ```

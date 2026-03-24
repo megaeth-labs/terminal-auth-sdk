@@ -20,10 +20,6 @@ The resulting access token can be used to read the user's Terminal profile and s
 - React bindings — `TerminalProvider`, `useTerminal` hook, and `TerminalWidget` drop-in component
 - Full TypeScript types
 
-## Access
-
-This package is published as a private package via [GitHub Packages](https://github.com/orgs/megaeth-labs/packages). Only `megaeth-labs` organization members can install it.
-
 ## Where to start
 
 - [Installation](getting-started/installation.md) — set up your environment and install the package
