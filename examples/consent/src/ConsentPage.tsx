@@ -7,6 +7,17 @@ interface ChallengeInfo {
   wallet: string;
   appName: string;
   clientId: string;
+  appOrigin?: string;
+  origin?: string;
+}
+
+function getOriginOrNull(value?: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
 }
 
 export function ConsentPage() {
@@ -56,12 +67,19 @@ export function ConsentPage() {
 
       const json = await res.json();
       const { code } = json.data ?? json;
+      const targetOrigin =
+        getOriginOrNull(challenge?.appOrigin) ??
+        getOriginOrNull(challenge?.origin) ??
+        getOriginOrNull(document.referrer);
 
-      if (window.opener) {
-        window.opener.postMessage({ code }, "*");
+      if (window.opener && targetOrigin) {
+        window.opener.postMessage({ code }, targetOrigin);
         setTimeout(() => window.close(), 300);
       } else {
-        setError("Lost connection to parent window. Please copy this code: " + code);
+        setError(
+          "Lost connection to parent window or missing safe target origin. Please copy this code: " +
+            code
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

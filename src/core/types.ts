@@ -18,16 +18,9 @@ interface RequestArguments {
     autoConnect?: boolean;
   }
 
-  interface Profile {
-    rank: number;
-    points: number;
-    username: string;
-  }
 
   interface Stats {
-    seasonId: number;
-    rankPosition: number;
-    lastWeekPoints: number;
+    rank: number;
     totalPoints: number;
   }
 
@@ -42,7 +35,6 @@ interface RequestArguments {
     config: TerminalSDKConfig;
     connect: (provider: EIP1193Provider) => Promise<ConnectResult>;
     disconnect: () => Promise<void>;
-    getProfile: () => Promise<Profile>;
     getStats: () => Promise<Stats>;
     getConnectionState(): ConnectionState;
     on(event: 'stateChange', callback: (state: ConnectionState) => void): void;
@@ -52,4 +44,4 @@ interface RequestArguments {
     openTerminalProfile(): void;
   }
 
-  export type { TerminalSDKConfig, Profile, Stats, TerminalSDK, ConnectionState, EIP1193Provider, ConnectResult };
+  export type { TerminalSDKConfig, Stats, TerminalSDK, ConnectionState, EIP1193Provider, ConnectResult };

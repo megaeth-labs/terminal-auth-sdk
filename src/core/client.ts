@@ -2,7 +2,6 @@ import type {
   ConnectionState,
   ConnectResult,
   EIP1193Provider,
-  Profile,
   Stats,
   TerminalSDKConfig,
 } from "./types";
@@ -62,12 +61,26 @@ export class TerminalClient {
       if (verifyResult.status === "linked" && verifyResult.code) {
         authCode = verifyResult.code;
       } else {
-        const popupUrl =
-          verifyResult.authorizeUrl ??
-          `${this.terminalOrigin}/link?challenge_id=${challengeId}`;
+        const expectedOrigin = this.parseOriginOrThrow(
+          this.terminalOrigin,
+          "terminalOrigin"
+        );
+        const popupUrl = verifyResult.authorizeUrl
+          ? new URL(verifyResult.authorizeUrl, expectedOrigin).toString()
+          : `${expectedOrigin}/link?challenge_id=${encodeURIComponent(
+              challengeId
+            )}`;
+        const popupOrigin = this.parseOriginOrThrow(popupUrl, "authorizeUrl");
+
+        if (popupOrigin !== expectedOrigin) {
+          throw new Error(
+            `authorizeUrl origin mismatch: expected ${expectedOrigin}, got ${popupOrigin}`
+          );
+        }
+
         authCode = await openPopupAndWaitForCode({
           url: popupUrl,
-          expectedOrigin: this.terminalOrigin,
+          expectedOrigin,
         });
       }
 
@@ -102,12 +115,7 @@ export class TerminalClient {
     this.setState("disconnected");
   }
 
-  async getProfile(): Promise<Profile> {
-    if (!this.accessToken) {
-      throw new Error("Not connected");
-    }
-    return this.fetchJSON<Profile>("GET", "/api/v1/profile", undefined, true);
-  }
+
 
   async getStats(): Promise<Stats> {
     if (!this.accessToken) {
@@ -174,6 +182,14 @@ export class TerminalClient {
   private setState(state: ConnectionState): void {
     this.connectionState = state;
     this.emitter.emit("stateChange", state);
+  }
+
+  private parseOriginOrThrow(value: string, label: string): string {
+    try {
+      return new URL(value).origin;
+    } catch {
+      throw new Error(`Invalid ${label}: ${value}`);
+    }
   }
 
   private async getAddress(provider: EIP1193Provider): Promise<string> {

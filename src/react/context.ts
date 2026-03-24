@@ -4,7 +4,6 @@ import type {
   ConnectionState,
   ConnectResult,
   EIP1193Provider,
-  Profile,
   Stats,
 } from "../core/types";
 
@@ -13,7 +12,6 @@ export interface TerminalContextValue {
   address: string | null;
   connect: (provider: EIP1193Provider) => Promise<ConnectResult>;
   disconnect: () => Promise<void>;
-  getProfile: () => Promise<Profile>;
   getStats: () => Promise<Stats>;
   openTerminalProfile: () => void;
   client: TerminalClient;

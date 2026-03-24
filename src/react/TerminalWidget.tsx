@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import type { EIP1193Provider, Profile } from "../core/types";
+import type { EIP1193Provider, Stats } from "../core/types";
 import { useTerminal } from "./useTerminal";
 
 interface TerminalWidgetProps {
@@ -135,15 +135,15 @@ const styles = {
 } as const;
 
 export function TerminalWidget({ provider, onError }: TerminalWidgetProps) {
-  const { state, address, connect, getProfile } = useTerminal();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { state, address, connect, getStats } = useTerminal();
+  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     if (state !== "connected") return;
     let cancelled = false;
-    getProfile()
-      .then((p) => {
-        if (!cancelled) setProfile(p);
+    getStats()
+      .then((s) => {
+        if (!cancelled) setStats(s);
       })
       .catch((err) => {
         if (!cancelled) onError?.(err instanceof Error ? err : new Error(String(err)));
@@ -151,7 +151,7 @@ export function TerminalWidget({ provider, onError }: TerminalWidgetProps) {
     return () => {
       cancelled = true;
     };
-  }, [state, getProfile, onError]);
+  }, [state, getStats, onError]);
 
   const handleConnect = async () => {
     if (!provider) return;
@@ -168,11 +168,11 @@ export function TerminalWidget({ provider, onError }: TerminalWidgetProps) {
         <TerminalLogo size={32} />
         <div style={styles.info}>
           <span style={styles.address}>{truncateAddress(address)}</span>
-          {profile && <span style={styles.rank}>Rank {profile.rank}</span>}
+          {stats && <span style={styles.rank}>Rank {stats.rank}</span>}
         </div>
-        {profile && (
+        {stats && (
           <span style={styles.points}>
-            {formatPoints(profile.points)} PT
+            {formatPoints(stats.totalPoints)} PT
           </span>
         )}
       </div>

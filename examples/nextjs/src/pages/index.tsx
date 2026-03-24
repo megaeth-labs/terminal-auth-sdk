@@ -1,20 +1,34 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useTerminal } from "terminal-auth-sdk";
-import { useAccount, useConnectorClient } from "wagmi";
+import { useTerminal, type EIP1193Provider } from "terminal-auth-sdk";
+import { useAccount } from "wagmi";
 import type { NextPage } from "next";
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
 
+function isEIP1193Provider(provider: unknown): provider is EIP1193Provider {
+  if (!provider || typeof provider !== "object") return false;
+
+  const candidate = provider as Partial<EIP1193Provider>;
+  return (
+    typeof candidate.request === "function" &&
+    typeof candidate.on === "function" &&
+    typeof candidate.removeListener === "function"
+  );
+}
+
 const Home: NextPage = () => {
-  const { isConnected } = useAccount();
-  const { data: connectorClient } = useConnectorClient();
+  const { isConnected, connector } = useAccount();
   const { state, connect } = useTerminal();
 
   const handleTerminalConnect = async () => {
-    if (!connectorClient) return;
+    if (!connector) return;
     try {
-      const result = await connect(connectorClient);
-      console.log("Terminal connected:", result);
+      const provider = await connector.getProvider();
+      if (!isEIP1193Provider(provider)) {
+        throw new Error("Connector provider does not implement full EIP-1193");
+      }
+      await connect(provider);
+      console.log("Terminal connected");
     } catch (err) {
       console.error("Terminal connect failed:", err);
     }
