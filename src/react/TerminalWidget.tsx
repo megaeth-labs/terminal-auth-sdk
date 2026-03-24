@@ -121,6 +121,7 @@ const baseStyles = {
     textDecoration: "none",
     transition: "background-color 0.15s ease",
     minWidth: "200px",
+    maxWidth: "500px",
   } satisfies CSSProperties,
   button: {
     display: "inline-flex",
@@ -166,6 +167,7 @@ const baseStyles = {
   divider: {
     width: "0.5px",
     alignSelf: "stretch",
+    margin: "-14px 0",
   } satisfies CSSProperties,
   points: {
     fontSize: "24px",
