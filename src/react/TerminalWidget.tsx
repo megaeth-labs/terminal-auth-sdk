@@ -136,6 +136,7 @@ const baseStyles = {
     fontWeight: 500,
     transition: "background-color 0.15s ease",
     minWidth: "200px",
+    maxWidth: "500px",
   } satisfies CSSProperties,
   buttonDisabled: {
     opacity: 0.5,

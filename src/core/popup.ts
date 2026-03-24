@@ -28,7 +28,7 @@ export function openPopupAndWaitForCode(options: PopupOptions): Promise<string> 
   }
 
   return new Promise<string>((resolve, reject) => {
-    const popup = window.open(url, "terminal-auth", "width=600,height=700");
+    const popup = window.open(url, "terminal-auth", "width=720,height=800");
 
     if (!popup) {
       reject(new Error("Popup blocked by browser"));
