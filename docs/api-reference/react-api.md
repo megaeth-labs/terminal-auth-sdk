@@ -91,11 +91,13 @@ import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 
 ### Props
 
-| Prop       | Type                     | Required | Default  | Description                                                                      |
-| ---------- | ------------------------ | -------- | -------- | -------------------------------------------------------------------------------- |
-| `provider` | `EIP1193Provider`        | No       | —        | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
-| `onError`  | `(error: Error) => void` | No       | —        | Called when `connect` or the profile fetch fails.                                |
-| `theme`    | `TerminalWidgetTheme`    | No       | `"dark"` | Visual theme. `"dark"`, `"light"`, or `"accent"`. See [TerminalWidgetTheme](./types.md#terminalwidgettheme). |
+| Prop         | Type                                                | Required | Default  | Description                                                                      |
+| ------------ | --------------------------------------------------- | -------- | -------- | -------------------------------------------------------------------------------- |
+| `provider`   | `EIP1193Provider`                                   | No       | —        | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
+| `onError`    | `(error: Error) => void`                            | No       | —        | Called when `connect` or the profile fetch fails.                                |
+| `theme`      | `TerminalWidgetTheme`                               | No       | `"dark"` | Visual theme. `"dark"`, `"light"`, or `"accent"`. See [TerminalWidgetTheme](./types.md#terminalwidgettheme). |
+| `classNames` | `Partial<Record<TerminalWidgetSlot, string>>`       | No       | —        | CSS class overrides per slot. See [Customization](#customization) and [TerminalWidgetSlot](./types.md#terminalwidgetslot). |
+| `styles`     | `Partial<Record<TerminalWidgetSlot, CSSProperties>>` | No       | —        | Inline style overrides per slot. See [Customization](#customization) and [TerminalWidgetSlot](./types.md#terminalwidgetslot). |
 
 ### Themes
 
@@ -104,6 +106,48 @@ import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 | `dark`   | `#19191a`  | white     | `#26de96` | `0.5px solid #313131` |
 | `light`  | `#ece8e8`  | `#19191a` | `#ff4bc9` | `0.5px solid #bebebe` |
 | `accent` | `#26de96`  | `#19191a` | white     | none                |
+
+### Customization
+
+The widget exposes named **slots** that map to its internal elements. Use `classNames` to apply CSS classes or `styles` to apply inline style overrides to any slot.
+
+```tsx
+<TerminalWidget
+  provider={provider}
+  theme="dark"
+  classNames={{
+    root: "rounded-xl shadow-lg",
+    points: "text-pink-500 font-black",
+    address: "font-mono",
+  }}
+  styles={{
+    divider: { display: "none" },
+    points: { fontSize: 32 },
+  }}
+/>
+```
+
+User-provided styles are applied after the built-in styles, so they always take precedence. The `root` slot targets the outer element (the `<div>` container when connected or the `<button>` when disconnected), so a separate top-level `className` or `style` prop is not needed.
+
+For the `logo` and `arrow` slots, the `color` style property is forwarded to the SVG fill/stroke.
+
+**Available slots**
+
+| Slot        | Element                                         |
+| ----------- | ----------------------------------------------- |
+| `root`      | Outer container (connected) or button (disconnected) |
+| `logo`      | Terminal logo SVG                               |
+| `info`      | Address + rank wrapper div                      |
+| `address`   | Address text span                               |
+| `rank`      | Rank text span                                  |
+| `divider`   | Vertical divider                                |
+| `points`    | Points text span                                |
+| `label`     | Button label text (disconnected state only)     |
+| `arrow`     | Arrow icon (disconnected state only)            |
+
+See [TerminalWidgetSlot](./types.md#terminalwidgetslot) for the type definition.
+
+If you need fully custom rendering beyond slot overrides, use the `useTerminal` hook directly and build your own UI.
 
 ### Behavior
 

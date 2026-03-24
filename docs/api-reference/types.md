@@ -95,6 +95,39 @@ type TerminalWidgetTheme = "dark" | "light" | "accent";
 
 ---
 
+## TerminalWidgetSlot
+
+Names for the internal elements of `TerminalWidget` that can be targeted via the `classNames` and `styles` props.
+
+```typescript
+type TerminalWidgetSlot =
+  | "root"
+  | "logo"
+  | "info"
+  | "address"
+  | "rank"
+  | "divider"
+  | "points"
+  | "label"
+  | "arrow";
+```
+
+| Value       | Element                                              |
+| ----------- | ---------------------------------------------------- |
+| `"root"`    | Outer container (connected) or button (disconnected) |
+| `"logo"`    | Terminal logo SVG                                    |
+| `"info"`    | Address + rank wrapper div                           |
+| `"address"` | Address text span                                    |
+| `"rank"`    | Rank text span                                       |
+| `"divider"` | Vertical divider                                     |
+| `"points"`  | Points text span                                     |
+| `"label"`   | Button label text (disconnected state only)          |
+| `"arrow"`   | Arrow icon (disconnected state only)                 |
+
+Not all slots are rendered in every state. `label` and `arrow` only exist in the disconnected button. `info`, `address`, `rank`, `divider`, and `points` only exist in the connected card.
+
+---
+
 ## EIP1193Provider
 
 Minimal interface for any EIP-1193 compatible wallet provider (e.g. `window.ethereum`, a provider from `await connector.getProvider()` in Wagmi, or MetaMask SDK).

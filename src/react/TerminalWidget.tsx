@@ -4,10 +4,23 @@ import { useTerminal } from "./useTerminal";
 
 export type TerminalWidgetTheme = "dark" | "light" | "accent";
 
+export type TerminalWidgetSlot =
+  | "root"
+  | "logo"
+  | "info"
+  | "address"
+  | "rank"
+  | "divider"
+  | "points"
+  | "label"
+  | "arrow";
+
 interface TerminalWidgetProps {
   provider?: EIP1193Provider;
   onError?: (error: Error) => void;
   theme?: TerminalWidgetTheme;
+  classNames?: Partial<Record<TerminalWidgetSlot, string>>;
+  styles?: Partial<Record<TerminalWidgetSlot, CSSProperties>>;
 }
 
 const themeTokens: Record<
@@ -177,7 +190,7 @@ const baseStyles = {
   } satisfies CSSProperties,
 } as const;
 
-export function TerminalWidget({ provider, onError, theme = "dark" }: TerminalWidgetProps) {
+export function TerminalWidget({ provider, onError, theme = "dark", classNames, styles }: TerminalWidgetProps) {
   const { state, address, connect, getStats } = useTerminal();
   const [stats, setStats] = useState<Stats | null>(null);
   const tokens = themeTokens[theme];
@@ -209,26 +222,30 @@ export function TerminalWidget({ provider, onError, theme = "dark" }: TerminalWi
 
   if (state === "connected" && address) {
     return (
-      <div style={{
-        ...baseStyles.container,
-        backgroundColor: tokens.containerBg,
-        border: tokens.containerBorder,
-      }}>
-        <TerminalLogo size={47} color={tokens.logoFill} />
-        <div style={baseStyles.info}>
-          <span style={{ ...baseStyles.address, color: tokens.textColor }}>
+      <div
+        className={classNames?.root}
+        style={{
+          ...baseStyles.container,
+          backgroundColor: tokens.containerBg,
+          border: tokens.containerBorder,
+          ...styles?.root,
+        }}
+      >
+        <TerminalLogo size={47} color={styles?.logo?.color as string ?? tokens.logoFill} />
+        <div className={classNames?.info} style={{ ...baseStyles.info, ...styles?.info }}>
+          <span className={classNames?.address} style={{ ...baseStyles.address, color: tokens.textColor, ...styles?.address }}>
             {truncateAddress(address)}
           </span>
           {stats && (
-            <span style={{ ...baseStyles.rank, color: tokens.rankColor }}>
+            <span className={classNames?.rank} style={{ ...baseStyles.rank, color: tokens.rankColor, ...styles?.rank }}>
               Rank {stats.rank}
             </span>
           )}
         </div>
         {stats && (
           <>
-            <div style={{ ...baseStyles.divider, backgroundColor: tokens.dividerColor }} />
-            <span style={{ ...baseStyles.points, color: tokens.pointsColor }}>
+            <div className={classNames?.divider} style={{ ...baseStyles.divider, backgroundColor: tokens.dividerColor, ...styles?.divider }} />
+            <span className={classNames?.points} style={{ ...baseStyles.points, color: tokens.pointsColor, ...styles?.points }}>
               {formatPoints(stats.totalPoints)} PT
             </span>
           </>
@@ -244,18 +261,20 @@ export function TerminalWidget({ provider, onError, theme = "dark" }: TerminalWi
       type="button"
       onClick={handleConnect}
       disabled={disabled}
+      className={classNames?.root}
       style={{
         ...baseStyles.button,
         backgroundColor: tokens.containerBg,
         color: tokens.textColor,
         ...(disabled ? baseStyles.buttonDisabled : {}),
+        ...styles?.root,
       }}
     >
-      <TerminalLogo size={32} color={tokens.logoFill} />
-      <span style={{ ...baseStyles.label, color: tokens.textColor }}>
+      <TerminalLogo size={32} color={styles?.logo?.color as string ?? tokens.logoFill} />
+      <span className={classNames?.label} style={{ ...baseStyles.label, color: tokens.textColor, ...styles?.label }}>
         {state === "connecting" ? "Connecting..." : "Connect To Terminal"}
       </span>
-      <ArrowIcon color={tokens.textColor} />
+      <ArrowIcon color={styles?.arrow?.color as string ?? tokens.textColor} />
     </button>
   );
 }

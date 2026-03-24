@@ -142,4 +142,25 @@ The widget automatically calls `getStats` after connecting to populate the rank 
 
 ### Styling
 
-`TerminalWidget` uses inline styles only and has no external CSS dependencies. Colors, borders, and logo fills adjust automatically based on the selected `theme`. If you need fully custom styling beyond the three built-in themes, use `useTerminal` directly and build your own UI.
+`TerminalWidget` uses inline styles only and has no external CSS dependencies. Colors, borders, and logo fills adjust automatically based on the selected `theme`.
+
+For custom styling beyond the built-in themes, use the `classNames` and `styles` props to target individual sub-elements by slot name:
+
+```tsx
+<TerminalWidget
+  provider={provider}
+  theme="dark"
+  classNames={{
+    root: "rounded-xl shadow-lg",
+    address: "font-mono",
+  }}
+  styles={{
+    points: { fontSize: 32, color: "#e94560" },
+    divider: { display: "none" },
+  }}
+/>
+```
+
+Available slots: `root`, `logo`, `info`, `address`, `rank`, `divider`, `points`, `label`, `arrow`. See the [full slot reference](../api-reference/react-api.md#customization) for details.
+
+If you need fully custom rendering beyond slot overrides, use `useTerminal` directly and build your own UI.
