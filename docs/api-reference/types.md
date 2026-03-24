@@ -81,6 +81,20 @@ interface Stats {
 
 ---
 
+## TerminalWidgetTheme
+
+```typescript
+type TerminalWidgetTheme = "dark" | "light" | "accent";
+```
+
+| Value      | Description                                                    |
+| ---------- | -------------------------------------------------------------- |
+| `"dark"`   | Dark background (`#19191a`), white text, green points.         |
+| `"light"`  | Light background (`#ece8e8`), dark text, pink points.          |
+| `"accent"` | Green background (`#26de96`), dark text, white points.         |
+
+---
+
 ## EIP1193Provider
 
 Minimal interface for any EIP-1193 compatible wallet provider (e.g. `window.ethereum`, a provider from `await connector.getProvider()` in Wagmi, or MetaMask SDK).

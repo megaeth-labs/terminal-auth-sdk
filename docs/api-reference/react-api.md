@@ -85,21 +85,31 @@ import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 <TerminalWidget
   provider={window.ethereum}
   onError={(err) => console.error(err)}
+  theme="dark"
 />
 ```
 
 ### Props
 
-| Prop       | Type                     | Required | Description                                                                      |
-| ---------- | ------------------------ | -------- | -------------------------------------------------------------------------------- |
-| `provider` | `EIP1193Provider`        | No       | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
-| `onError`  | `(error: Error) => void` | No       | Called when `connect` or the profile fetch fails.                                |
+| Prop       | Type                     | Required | Default  | Description                                                                      |
+| ---------- | ------------------------ | -------- | -------- | -------------------------------------------------------------------------------- |
+| `provider` | `EIP1193Provider`        | No       | —        | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
+| `onError`  | `(error: Error) => void` | No       | —        | Called when `connect` or the profile fetch fails.                                |
+| `theme`    | `TerminalWidgetTheme`    | No       | `"dark"` | Visual theme. `"dark"`, `"light"`, or `"accent"`. See [TerminalWidgetTheme](./types.md#terminalwidgettheme). |
+
+### Themes
+
+| Theme    | Background | Text      | Points    | Border              |
+| -------- | ---------- | --------- | --------- | ------------------- |
+| `dark`   | `#19191a`  | white     | `#26de96` | `0.5px solid #313131` |
+| `light`  | `#ece8e8`  | `#19191a` | `#ff4bc9` | `0.5px solid #bebebe` |
+| `accent` | `#26de96`  | `#19191a` | white     | none                |
 
 ### Behavior
 
 **Disconnected state** — renders a button with the Terminal logo, the label "Connect To Terminal", and an arrow icon. The button is disabled when `provider` is `undefined` or `state === "connecting"`.
 
-**Connected state** — renders a display card with the Terminal logo, the truncated wallet address (first 6 + last 4 characters), the user's rank, and their points.
+**Connected state** — renders a display card with the Terminal logo, the truncated wallet address (first 6 + last 4 characters), the user's rank, a vertical divider, and their points.
 
 After a successful connect, the widget calls `getStats` automatically. If `getStats` fails, the `onError` callback is invoked and the rank/points are not displayed.
 

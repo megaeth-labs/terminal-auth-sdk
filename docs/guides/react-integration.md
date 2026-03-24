@@ -105,6 +105,7 @@ function MyPage() {
     <TerminalWidget
       provider={window.ethereum}
       onError={(err) => console.error(err)}
+      theme="dark"
     />
   );
 }
@@ -112,19 +113,33 @@ function MyPage() {
 
 ### Props
 
-| Prop | Type | Required | Description |
-|---|---|---|---|
-| `provider` | `EIP1193Provider` | No | The wallet provider. The button is disabled until a provider is passed. |
-| `onError` | `(error: Error) => void` | No | Called if `connect` or `getStats` throws. |
+| Prop | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `provider` | `EIP1193Provider` | No | — | The wallet provider. The button is disabled until a provider is passed. |
+| `onError` | `(error: Error) => void` | No | — | Called if `connect` or `getStats` throws. |
+| `theme` | `TerminalWidgetTheme` | No | `"dark"` | Visual theme. `"dark"`, `"light"`, or `"accent"`. |
+
+### Themes
+
+The widget ships with three built-in themes:
+
+- **`"dark"`** — dark background with green points. Designed for dark UIs.
+- **`"light"`** — light background with pink points. Designed for light UIs.
+- **`"accent"`** — green background with white points. A bold, branded variant.
+
+```tsx
+<TerminalWidget provider={provider} theme="light" />
+<TerminalWidget provider={provider} theme="accent" />
+```
 
 ### States
 
 **Disconnected / Connecting** — renders a button with the Terminal logo, the label "Connect To Terminal", and an arrow icon. The button is disabled while `state === "connecting"` or when no `provider` is supplied.
 
-**Connected** — renders a card showing the Terminal logo, the truncated wallet address, the user's rank, and their points.
+**Connected** — renders a card showing the Terminal logo, the truncated wallet address, the user's rank, a vertical divider, and their points.
 
 The widget automatically calls `getStats` after connecting to populate the rank and points display.
 
 ### Styling
 
-`TerminalWidget` uses inline styles only and has no external CSS dependencies. It is designed for dark backgrounds (`#1a1a1a` background, white text, green points indicator). If you need custom styling, use `useTerminal` directly and build your own UI.
+`TerminalWidget` uses inline styles only and has no external CSS dependencies. Colors, borders, and logo fills adjust automatically based on the selected `theme`. If you need fully custom styling beyond the three built-in themes, use `useTerminal` directly and build your own UI.
