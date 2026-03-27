@@ -47,6 +47,7 @@ Returned by `client.connect()` and `context.connect()` on success.
 interface ConnectResult {
   accessToken: string;
   expiresIn: number;
+  profileId: string;
 }
 ```
 
@@ -54,6 +55,7 @@ interface ConnectResult {
 | ------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `accessToken` | `string` | Bearer token for authenticated API requests. Held internally by the client and used automatically for `getStats`. |
 | `expiresIn`   | `number` | Token lifetime in seconds. The client tracks expiry automatically and rejects calls after the token expires.                        |
+| `profileId`   | `string` | The user's Terminal profile ID, decoded from the access token.                                                                     |
 
 ---
 

@@ -37,7 +37,7 @@ sequenceDiagram
     SDK->>API: POST /api/v1/auth/token
     API-->>SDK: accessToken
 
-    SDK-->>App: ConnectResult { accessToken, expiresIn }
+    SDK-->>App: ConnectResult { accessToken, expiresIn, profileId }
 ```
 
 ## Step-by-step
@@ -76,9 +76,13 @@ The SDK listens for this message and validates that it came from the expected Te
 
 ### 7. Token exchange
 
-The SDK sends the `code` and `codeVerifier` to `/api/v1/auth/token`. The API verifies that the `codeVerifier` hashes to the `codeChallenge` sent in step 5, then returns an `accessToken`.
+The SDK sends the `code` and `codeVerifier` to `/api/v1/auth/token`. The API verifies that the `codeVerifier` hashes to the `codeChallenge` sent in step 5, then returns an `accessToken`. The SDK decodes the `profileId` from the token payload and includes it in the `ConnectResult`.
 
-### 8. Account change detection
+### 8. Session persistence
+
+After a successful connect, the SDK saves the session (access token, profile ID, expiry, and wallet address) to `localStorage`. On subsequent page loads, `restoreSession()` can restore this session without re-running the auth flow. The stored session is cleared on `disconnect()`, token expiry, or wallet account change.
+
+### 9. Account change detection
 
 After a successful connect, the SDK subscribes to the `accountsChanged` event on the provider. If the user switches wallets, the SDK automatically disconnects and emits a `stateChange: disconnected` event.
 
@@ -86,7 +90,7 @@ After a successful connect, the SDK subscribes to the `accountsChanged` event on
 
 If any step fails, the SDK:
 
-1. Clears the access token and connected address
+1. Clears the access token, connected address, and stored session
 2. Emits an `error` event
 3. Throws the error so the calling code can handle it
 

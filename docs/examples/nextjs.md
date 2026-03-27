@@ -103,10 +103,16 @@ cp examples/nextjs/.env.local.example examples/nextjs/.env.local
 
 All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser.
 
+## `"use client"` compatibility
+
+All React exports from the SDK (`TerminalProvider`, `TerminalWidget`, `useTerminal`) include the `"use client"` directive. They work in Next.js App Router without needing a wrapper client component.
+
 ## How it works
 
-1. The user connects their wallet with RainbowKit.
-2. `isConnected` becomes `true`, which renders the Terminal connect button.
-3. The user clicks the button. `handleTerminalConnect` resolves an EIP-1193 provider from `connector.getProvider()` and calls `connect(provider)`.
-4. The SDK runs the full auth flow. If the wallet is not linked to a Terminal profile, a consent popup opens.
-5. The `state` value updates from `"connecting"` to `"connected"` on success. The button becomes disabled with the label "Connected to Terminal".
+1. On mount, `TerminalProvider` calls `restoreSession()` to resume any previously saved session. If a valid session exists, the user is connected automatically.
+2. The user connects their wallet with RainbowKit.
+3. `isConnected` becomes `true`, which renders the Terminal connect button.
+4. The user clicks the button. `handleTerminalConnect` resolves an EIP-1193 provider from `connector.getProvider()` and calls `connect(provider)`.
+5. The SDK runs the full auth flow. If the wallet is not linked to a Terminal profile, a consent popup opens.
+6. The `state` value updates from `"connecting"` to `"connected"` on success. The button becomes disabled with the label "Connected to Terminal".
+7. The session is saved to `localStorage` so it persists across page reloads.

@@ -91,9 +91,10 @@ cp examples/rainbowkit/.env.example examples/rainbowkit/.env
 
 ## How it works
 
-1. The user clicks the RainbowKit `ConnectButton` and connects their wallet.
-2. `isConnected` becomes `true`, which renders `TerminalWidget`.
-3. The app resolves the active connector's EIP-1193 provider via `connector.getProvider()`.
-4. The user clicks "Connect To Terminal" in the widget.
-5. The SDK runs the full auth flow. If the wallet is not yet linked to a Terminal profile, a consent popup opens.
-6. On success, the widget switches to its connected state, showing the truncated address, rank, and points.
+1. On mount, `TerminalProvider` automatically restores any previously saved session from `localStorage`.
+2. The user clicks the RainbowKit `ConnectButton` and connects their wallet.
+3. `isConnected` becomes `true`, which renders `TerminalWidget`.
+4. The app resolves the active connector's EIP-1193 provider via `connector.getProvider()`.
+5. The user clicks "Connect To Terminal" in the widget.
+6. The SDK runs the full auth flow. If the wallet is not yet linked to a Terminal profile, a consent popup opens.
+7. On success, the widget switches to its connected state, showing the truncated address, rank, and points. The session is persisted so it survives page reloads.

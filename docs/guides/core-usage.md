@@ -12,9 +12,24 @@ const client = new TerminalClient({
 });
 ```
 
+## Restoring a session
+
+The client automatically saves sessions to `localStorage` after a successful `connect()`. Call `restoreSession()` to resume an existing session without re-authenticating:
+
+```typescript
+const restored = client.restoreSession();
+if (restored) {
+  console.log("Session restored");
+} else {
+  // No valid session — need to connect
+}
+```
+
+If the stored session is expired or invalid, `restoreSession()` clears it and returns `false`.
+
 ## Connecting
 
-Pass any EIP-1193 compatible provider to `connect`. The method resolves with an `accessToken` and `expiresIn` on success, or throws on failure.
+Pass any EIP-1193 compatible provider to `connect`. The method resolves with an `accessToken`, `expiresIn`, and `profileId` on success, or throws on failure.
 
 ```typescript
 await client.connect(window.ethereum);
@@ -37,7 +52,7 @@ console.log(stats.totalPoints); // 1500
 await client.disconnect();
 ```
 
-This clears the access token, unsubscribes from wallet account change events, and transitions the state to `"disconnected"`.
+This clears the access token and stored session, unsubscribes from wallet account change events, and transitions the state to `"disconnected"`.
 
 ## Listening to events
 
@@ -64,6 +79,9 @@ const state = client.getConnectionState();
 
 const address = client.getConnectedAddress();
 // "0xabc..." or null
+
+const profileId = client.getProfileId();
+// "prof_..." or null
 ```
 
 ## Opening the Terminal profile
@@ -88,6 +106,9 @@ client.on("error", (err) => {
   console.error(err);
 });
 
+// Restore a previous session if available
+client.restoreSession();
+
 async function connect() {
   await client.connect(window.ethereum);
   console.log("Connected to Terminal");
@@ -103,4 +124,4 @@ async function disconnect() {
 
 ## Account change detection
 
-After connecting, the SDK automatically listens for `accountsChanged` events on the provider. If the user switches to a different wallet account, the SDK disconnects automatically and emits `stateChange: disconnected`. No manual cleanup is needed.
+After connecting, the SDK automatically listens for `accountsChanged` events on the provider. If the user switches to a different wallet account, the SDK disconnects automatically, clears the stored session, and emits `stateChange: disconnected`. No manual cleanup is needed.

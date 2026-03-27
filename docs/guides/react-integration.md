@@ -25,7 +25,7 @@ function App({ children }) {
 | `config` | `TerminalSDKConfig` | SDK configuration. Only `clientId` is required (provided by the MegaETH team). See [configuration options](../api-reference/types.md#terminalsdkconfig). |
 | `children` | `ReactNode` | Your application tree. |
 
-The provider creates a single `TerminalClient` instance on mount. It subscribes to `stateChange` events and keeps `state` and `address` in sync with React state automatically.
+The provider creates a single `TerminalClient` instance on mount. It subscribes to `stateChange` events, calls `restoreSession()` to resume any previously saved session, and keeps `state` and `address` in sync with React state automatically.
 
 ---
 

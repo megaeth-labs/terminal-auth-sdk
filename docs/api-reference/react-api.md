@@ -25,7 +25,7 @@ import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";
 | `config`   | `TerminalSDKConfig` | Yes      | SDK configuration. Only `clientId` is required (provided by the MegaETH team). See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
 | `children` | `ReactNode`         | Yes      | Component tree that will have access to the context.                      |
 
-The provider creates one `TerminalClient` on mount and keeps it stable for the lifetime of the component. State changes from the client are synced to React state automatically.
+The provider creates one `TerminalClient` on mount and keeps it stable for the lifetime of the component. It automatically calls `restoreSession()` to resume any previously saved session. State changes from the client are synced to React state automatically.
 
 ---
 
@@ -60,7 +60,7 @@ const {
 | `state`               | `ConnectionState`                                       | Current connection state: `"connected"`, `"connecting"`, or `"disconnected"`. Reactive — updates trigger re-renders. |
 | `address`             | `string \| null`                                        | Connected wallet address. `null` when disconnected. Reactive.                                                        |
 | `connect`             | `(provider: EIP1193Provider) => Promise<ConnectResult>` | Runs the full auth flow with the given provider.                                                                     |
-| `disconnect`          | `() => Promise<void>`                                   | Clears the session. Throws if not connected.                                                                         |
+| `disconnect`          | `() => Promise<void>`                                   | Clears the session and stored session data. Throws if not connected.                                                 |
 | `getStats`            | `() => Promise<Stats>`                                  | Fetches the user's season stats. Throws if not connected.                                                            |
 | `openTerminalProfile` | `() => void`                                            | Opens the user's Terminal profile page in a new tab.                                                                 |
 | `client`              | `TerminalClient`                                        | The underlying `TerminalClient` instance. Use for advanced scenarios such as custom event subscriptions.             |

@@ -58,7 +58,7 @@ Sets the connection state to `"connecting"` at the start and `"connected"` on su
 disconnect(): Promise<void>
 ```
 
-Clears the access token, unsubscribes from wallet account change events, and sets the connection state to `"disconnected"`.
+Clears the access token and stored session, unsubscribes from wallet account change events, and sets the connection state to `"disconnected"`.
 
 **Throws** `Error("Not connected")` if called when there is no active session.
 
@@ -100,6 +100,28 @@ Returns the currently connected wallet address, or `null` if not connected.
 
 ---
 
+### `getProfileId`
+
+```typescript
+getProfileId(): string | null
+```
+
+Returns the connected user's Terminal profile ID, or `null` if not connected.
+
+---
+
+### `restoreSession`
+
+```typescript
+restoreSession(): boolean
+```
+
+Attempts to restore a previously saved session from `localStorage`. Returns `true` if a valid (non-expired) session was restored, `false` otherwise. If the session is expired or malformed, it is cleared automatically.
+
+This is called automatically by `TerminalProvider` on mount. When using `TerminalClient` directly, call this after creating the client to resume an existing session without requiring the user to re-authenticate.
+
+---
+
 ### `on`
 
 ```typescript
@@ -133,4 +155,12 @@ Removes a previously registered listener. The `callback` reference must match th
 openTerminalProfile(): void
 ```
 
-Opens the user's Terminal profile page in a new browser tab. Does not require an active connection.
+Opens the user's Terminal profile page in a new browser tab. Does not require an active connection. No-ops in non-browser environments (SSR).
+
+---
+
+## Session persistence
+
+`TerminalClient` automatically persists sessions to `localStorage` under the key `terminal_session_<clientId>`. Sessions are saved on successful `connect()` and cleared on `disconnect()` or when the user switches wallet accounts.
+
+To restore a saved session, call `restoreSession()` after creating the client. `TerminalProvider` does this automatically on mount.
