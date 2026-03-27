@@ -1,3 +1,5 @@
+"use client";
+
 import { useContext } from "react";
 import { TerminalContext, type TerminalContextValue } from "./context";
 

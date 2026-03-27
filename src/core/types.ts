@@ -15,7 +15,6 @@ interface RequestArguments {
     clientId: string;
     baseUrl?: string;
     terminalOrigin?: string;
-    autoConnect?: boolean;
   }
 
 
@@ -27,6 +26,7 @@ interface RequestArguments {
   interface ConnectResult {
     accessToken: string;
     expiresIn: number;
+    profileId: string;
   }
 
   type ConnectionState = 'connected' | 'disconnected' | 'connecting';
@@ -37,6 +37,8 @@ interface RequestArguments {
     disconnect: () => Promise<void>;
     getStats: () => Promise<Stats>;
     getConnectionState(): ConnectionState;
+    getProfileId(): string | null;
+    restoreSession(): boolean;
     on(event: 'stateChange', callback: (state: ConnectionState) => void): void;
     on(event: 'error', callback: (error: Error) => void): void;
     off(event: 'stateChange', callback: (state: ConnectionState) => void): void;
