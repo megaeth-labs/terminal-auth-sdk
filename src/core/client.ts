@@ -19,15 +19,27 @@ type SDKEvents = {
   error: Error;
 };
 
+interface StoredSession {
+  accessToken: string;
+  profileId: string;
+  tokenExpiresAt: number;
+  connectedAddress: string;
+}
+
 export class TerminalClient {
   private config: TerminalSDKConfig;
   private accessToken: string | null = null;
   private tokenExpiresAt: number | null = null;
   private connectedAddress: string | null = null;
+  private profileId: string | null = null;
   private connectionState: ConnectionState = "disconnected";
   private emitter = new TypedEventEmitter<SDKEvents>();
   private connectedProvider: EIP1193Provider | null = null;
   private accountsChangedHandler: ((accounts: string[]) => void) | null = null;
+
+  private get storageKey(): string {
+    return `terminal_session_${this.config.clientId}`;
+  }
 
   private get baseUrl(): string {
     return this.config.baseUrl ?? DEFAULT_BASE_URL;
@@ -90,14 +102,18 @@ export class TerminalClient {
       const result = await this.exchangeToken(authCode, codeVerifier);
 
       this.accessToken = result.accessToken;
+      this.profileId = result.profileId;
       this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
       this.connectedAddress = address;
+      this.saveSession();
       this.subscribeAccountChanges(provider);
       this.setState("connected");
 
       return result;
     } catch (err) {
+      this.clearSession();
       this.accessToken = null;
+      this.profileId = null;
       this.tokenExpiresAt = null;
       this.connectedAddress = null;
       this.unsubscribeAccountChanges();
@@ -114,7 +130,9 @@ export class TerminalClient {
       throw new Error("Not connected");
     }
 
+    this.clearSession();
     this.accessToken = null;
+    this.profileId = null;
     this.tokenExpiresAt = null;
     this.connectedAddress = null;
     this.unsubscribeAccountChanges();
@@ -124,10 +142,15 @@ export class TerminalClient {
 
 
   async getStats(): Promise<Stats> {
-    if (!this.accessToken || this.isTokenExpired()) {
+    if (!this.accessToken || !this.profileId || this.isTokenExpired()) {
       throw new Error("Not connected");
     }
-    return this.fetchJSON<Stats>("GET", "/api/v1/me/stats", undefined, true);
+    return this.fetchJSON<Stats>(
+      "GET",
+      `/api/v1/profiles/${this.profileId}/stats`,
+      undefined,
+      true
+    );
   }
 
   private isTokenExpired(): boolean {
@@ -140,6 +163,49 @@ export class TerminalClient {
 
   getConnectedAddress(): string | null {
     return this.connectedAddress;
+  }
+
+  getProfileId(): string | null {
+    return this.profileId;
+  }
+
+  restoreSession(): boolean {
+    if (this.connectionState === "connected") {
+      return true;
+    }
+
+    try {
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) return false;
+
+      const data: StoredSession = JSON.parse(raw);
+
+      if (
+        typeof data.accessToken !== "string" ||
+        typeof data.profileId !== "string" ||
+        typeof data.tokenExpiresAt !== "number" ||
+        typeof data.connectedAddress !== "string"
+      ) {
+        this.clearSession();
+        return false;
+      }
+
+      if (Date.now() >= data.tokenExpiresAt) {
+        this.clearSession();
+        return false;
+      }
+
+      this.accessToken = data.accessToken;
+      this.profileId = data.profileId;
+      this.tokenExpiresAt = data.tokenExpiresAt;
+      this.connectedAddress = data.connectedAddress;
+      this.setState("connected");
+
+      return true;
+    } catch {
+      this.clearSession();
+      return false;
+    }
   }
 
   on<K extends keyof SDKEvents>(
@@ -157,10 +223,42 @@ export class TerminalClient {
   }
 
   openTerminalProfile(): void {
-    window.open(`${this.terminalOrigin}/profile`, "_blank");
+    if (typeof window !== "undefined") {
+      window.open(`${this.terminalOrigin}/profile`, "_blank");
+    }
   }
 
   // --- Private helpers ---
+
+  private saveSession(): void {
+    if (
+      !this.accessToken ||
+      !this.profileId ||
+      !this.tokenExpiresAt ||
+      !this.connectedAddress
+    ) {
+      return;
+    }
+    try {
+      const data: StoredSession = {
+        accessToken: this.accessToken,
+        profileId: this.profileId,
+        tokenExpiresAt: this.tokenExpiresAt,
+        connectedAddress: this.connectedAddress,
+      };
+      localStorage.setItem(this.storageKey, JSON.stringify(data));
+    } catch {
+      // localStorage unavailable (SSR, privacy mode, quota exceeded)
+    }
+  }
+
+  private clearSession(): void {
+    try {
+      localStorage.removeItem(this.storageKey);
+    } catch {
+      // localStorage unavailable
+    }
+  }
 
   private subscribeAccountChanges(provider: EIP1193Provider): void {
     this.unsubscribeAccountChanges();
@@ -169,7 +267,9 @@ export class TerminalClient {
       const newAddress = accounts[0]?.toLowerCase();
       const currentAddress = this.connectedAddress?.toLowerCase();
       if (!newAddress || newAddress !== currentAddress) {
+        this.clearSession();
         this.accessToken = null;
+        this.profileId = null;
         this.tokenExpiresAt = null;
         this.connectedAddress = null;
         this.unsubscribeAccountChanges();
@@ -264,10 +364,25 @@ export class TerminalClient {
       clientId: this.config.clientId,
     });
 
+    const profileId = this.decodeProfileId(res.accessToken);
+
     return {
       accessToken: res.accessToken,
       expiresIn: res.expiresIn,
+      profileId,
     };
+  }
+
+  private decodeProfileId(token: string): string {
+    const parts = token.split(".");
+    if (parts.length !== 3 || !parts[1]) {
+      throw new Error("Invalid access token format");
+    }
+    const payload = JSON.parse(atob(parts[1]));
+    if (typeof payload.profile_id !== "string" || !payload.profile_id) {
+      throw new Error("Access token missing profile_id");
+    }
+    return payload.profile_id;
   }
 
   private async fetchJSON<T>(
