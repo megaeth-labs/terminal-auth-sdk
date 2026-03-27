@@ -1,4 +1,6 @@
-import { useEffect, useState, type CSSProperties } from "react";
+"use client";
+
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import type { EIP1193Provider, Stats } from "../core/types";
 import { useTerminal } from "./useTerminal";
 
@@ -194,6 +196,10 @@ export function TerminalWidget({ provider, onError, theme = "dark", classNames, 
   const { state, address, connect, getStats } = useTerminal();
   const [stats, setStats] = useState<Stats | null>(null);
   const tokens = themeTokens[theme];
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     if (state !== "connected") return;
@@ -204,12 +210,12 @@ export function TerminalWidget({ provider, onError, theme = "dark", classNames, 
       })
       .catch((err) => {
         if (!cancelled)
-          onError?.(err instanceof Error ? err : new Error(String(err)));
+          onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
       });
     return () => {
       cancelled = true;
     };
-  }, [state, getStats, onError]);
+  }, [state, getStats]);
 
   const handleConnect = async () => {
     if (!provider) return;

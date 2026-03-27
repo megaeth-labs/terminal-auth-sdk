@@ -1,6 +1,9 @@
+"use client";
+
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from "react";
@@ -28,6 +31,7 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
       setAddress(client.getConnectedAddress());
     };
     client.on("stateChange", onStateChange);
+    client.restoreSession();
     return () => client.off("stateChange", onStateChange);
   }, [client]);
 
@@ -45,10 +49,13 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
     [client]
   );
 
+  const value = useMemo(
+    () => ({ state, address, connect, disconnect, getStats, openTerminalProfile, client }),
+    [state, address, connect, disconnect, getStats, openTerminalProfile, client]
+  );
+
   return (
-    <TerminalContext.Provider
-      value={{ state, address, connect, disconnect, getStats, openTerminalProfile, client }}
-    >
+    <TerminalContext.Provider value={value}>
       {children}
     </TerminalContext.Provider>
   );
