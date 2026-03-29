@@ -9,7 +9,7 @@
 When a user connects, the SDK:
 
 1. Requests their wallet address via an EIP-1193 provider
-2. Requests a signed challenge (EIP-712 typed data) from the Terminal API
+2. Requests a SIWE message from the Terminal API for the wallet to sign
 3. Runs a PKCE-secured authorization flow
 4. Opens a consent popup for first-time wallet linking
 5. Exchanges the authorization code for an access token
