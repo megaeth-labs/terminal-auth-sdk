@@ -147,5 +147,5 @@ The SDK uses three methods on the provider:
 | Method                                                | Used for                          |
 | ----------------------------------------------------- | --------------------------------- |
 | `request({ method: "eth_requestAccounts" })`          | Getting the wallet address        |
-| `request({ method: "eth_signTypedData_v4", params })` | Signing the EIP-712 challenge     |
+| `request({ method: "personal_sign", params })`        | Signing the SIWE message          |
 | `on("accountsChanged", ...)` / `removeListener(...)`  | Detecting wallet account switches |

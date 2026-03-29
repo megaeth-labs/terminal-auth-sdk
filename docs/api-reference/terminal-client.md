@@ -41,7 +41,7 @@ Runs the full authentication flow:
 1. Requests the wallet address from the provider
 2. Requests a nonce from the Terminal API
 3. Generates a PKCE pair
-4. Signs the EIP-712 challenge
+4. Signs the SIWE message
 5. Verifies the signature
 6. Opens the consent popup if the wallet is not yet linked
 7. Exchanges the authorization code for an access token

@@ -1,6 +1,6 @@
 # Authentication Flow
 
-The SDK uses an OAuth-style flow secured by wallet signatures (EIP-712) and PKCE. This page explains each step so you understand what happens when `connect()` is called.
+The SDK uses an OAuth-style flow secured by wallet signatures (SIWE / EIP-4361) and PKCE. This page explains each step so you understand what happens when `connect()` is called.
 
 ## Overview
 
@@ -17,11 +17,11 @@ sequenceDiagram
     Wallet-->>SDK: wallet address
 
     SDK->>API: POST /api/v1/auth/nonce
-    API-->>SDK: challengeId + EIP-712 data
+    API-->>SDK: challengeId + SIWE message
 
     SDK->>SDK: generate PKCE pair (codeVerifier + codeChallenge)
 
-    SDK->>Wallet: eth_signTypedData_v4
+    SDK->>Wallet: personal_sign
     Wallet-->>SDK: signature
 
     SDK->>API: POST /api/v1/auth/verify-signature
@@ -51,7 +51,7 @@ The SDK calls `eth_requestAccounts` on the EIP-1193 provider. The wallet prompts
 The SDK sends a `POST` to `/api/v1/auth/nonce` with the wallet address and `clientId`. The API returns:
 
 - `challengeId` — a unique ID for this auth attempt
-- `eip712Data` — typed data for the wallet to sign, following the [EIP-712 standard](https://eips.ethereum.org/EIPS/eip-712)
+- `message` — a [SIWE (EIP-4361)](https://eips.ethereum.org/EIPS/eip-4361) message string for the wallet to sign
 
 ### 3. Generate a PKCE pair
 
@@ -59,7 +59,7 @@ The SDK generates a cryptographically random `codeVerifier` (128 characters) and
 
 ### 4. Sign the challenge
 
-The SDK calls `eth_signTypedData_v4` on the provider with the EIP-712 data. The wallet shows the user a structured signing prompt. The resulting signature proves ownership of the wallet address.
+The SDK calls `personal_sign` on the provider with the SIWE message. The wallet shows the user a human-readable signing prompt. The resulting signature proves ownership of the wallet address.
 
 ### 5. Verify the signature
 

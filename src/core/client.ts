@@ -59,11 +59,11 @@ export class TerminalClient {
     try {
       const address = await this.getAddress(provider);
 
-      const { challengeId, eip712Data } = await this.requestNonce(address);
+      const { challengeId, message } = await this.requestNonce(address);
 
       const { codeVerifier, codeChallenge } = await generatePKCEPair();
 
-      const signature = await this.signChallenge(provider, address, eip712Data);
+      const signature = await this.signMessage(provider, address, message);
 
       const verifyResult = await this.verifySignature(
         challengeId,
@@ -317,21 +317,21 @@ export class TerminalClient {
 
   private async requestNonce(
     address: string
-  ): Promise<{ challengeId: string; nonce: string; eip712Data: object }> {
+  ): Promise<{ challengeId: string; nonce: string; message: string }> {
     return this.fetchJSON("POST", "/api/v1/auth/nonce", {
       wallet: address,
       clientId: this.config.clientId,
     });
   }
 
-  private async signChallenge(
+  private async signMessage(
     provider: EIP1193Provider,
     address: string,
-    eip712Data: object
+    message: string
   ): Promise<string> {
     return (await provider.request({
-      method: "eth_signTypedData_v4",
-      params: [address, JSON.stringify(eip712Data)],
+      method: "personal_sign",
+      params: [message, address],
     })) as string;
   }
 

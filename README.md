@@ -6,7 +6,7 @@ Authentication SDK for linking wallets to MegaETH Terminal profiles. Handles the
 
 ## Features
 
-- Wallet-based authentication via EIP-712 typed data signatures
+- Wallet-based authentication via SIWE (Sign-In with Ethereum) signatures
 - PKCE-secured OAuth authorization flow
 - Popup-based consent for Terminal profile linking
 - React bindings (`TerminalProvider` + `useTerminal` hook)
