@@ -17,6 +17,7 @@
 
 - [RainbowKit](examples/rainbowkit.md)
 - [Next.js](examples/nextjs.md)
+- [Privy](examples/privy.md)
 
 ## API Reference
 

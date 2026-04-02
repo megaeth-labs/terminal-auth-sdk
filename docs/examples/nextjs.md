@@ -97,9 +97,10 @@ Create a `.env.local` file based on the example:
 cp examples/nextjs/.env.local.example examples/nextjs/.env.local
 ```
 
-| Variable | Description |
-|---|---|
-| `NEXT_PUBLIC_TERMINAL_CLIENT_ID` | Your Terminal client ID (provided by the MegaETH team) |
+| Variable | Required | Description |
+|---|---|---|
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Yes | WalletConnect project ID from [cloud.walletconnect.com](https://cloud.walletconnect.com) |
+| `NEXT_PUBLIC_TERMINAL_CLIENT_ID` | No | Terminal client ID (defaults to `"1"`) |
 
 All environment variables must be prefixed with `NEXT_PUBLIC_` to be accessible in the browser.
 

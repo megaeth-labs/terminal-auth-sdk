@@ -85,3 +85,4 @@ console.log(stats.rank, stats.totalPoints);
 - [Authentication Flow](../guides/authentication-flow.md) — understand what happens under the hood
 - [React Integration](../guides/react-integration.md) — detailed guide to all React APIs
 - [RainbowKit Example](../examples/rainbowkit.md) — full working example with Wagmi + RainbowKit
+- [Privy Example](../examples/privy.md) — full working example with Privy embedded wallets
