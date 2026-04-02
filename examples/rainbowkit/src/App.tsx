@@ -3,7 +3,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
-import { TerminalWidget, type EIP1193Provider } from "terminal-auth-sdk";
+import { TerminalWidget, type EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
 
 function isEIP1193Provider(provider: unknown): provider is EIP1193Provider {
   if (!provider || typeof provider !== "object") return false;

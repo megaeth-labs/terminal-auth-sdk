@@ -1,5 +1,5 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useTerminal, type EIP1193Provider } from "terminal-auth-sdk";
+import { useTerminal, type EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
 import { useAccount } from "wagmi";
 import type { NextPage } from "next";
 import Head from "next/head";

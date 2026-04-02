@@ -13,7 +13,7 @@
     "@tanstack/react-query": "^5.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "terminal-auth-sdk": "workspace:*",
+    "@megaeth-labs/terminal-auth-sdk": "workspace:*",
     "viem": "^2.31.0",
     "wagmi": "^2.17.0"
   },
