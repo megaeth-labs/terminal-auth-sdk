@@ -12,7 +12,7 @@ import { openPopupAndWaitForCode } from "./popup";
 const DEFAULT_BASE_URL =
   "https://terminal-backend-git-staging-mega-eth.vercel.app";
 const DEFAULT_TERMINAL_ORIGIN =
-  "https://terminal-frontend-temp-nine.vercel.app";
+  "https://staging-terminal.megaeth.com";
 
 type SDKEvents = {
   stateChange: ConnectionState;
