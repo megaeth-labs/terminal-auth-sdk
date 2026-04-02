@@ -10,6 +10,7 @@
 ## Guides
 
 - [Authentication Flow](guides/authentication-flow.md)
+- [Authentication Types](guides/authentication-types.md)
 - [React Integration](guides/react-integration.md)
 - [Core Usage](guides/core-usage.md)
 

@@ -4,7 +4,7 @@
 
 **[Live demo](https://auth-sdk-demo-seven.vercel.app/)**
 
-> **Beta**: This library is in beta. The API may change between releases. Mobile app support is not yet available and will be included in the next release, along with an alternative to the popup-based consent flow.
+> **Beta**: This library is in beta. The API may change between releases. The current authentication uses a popup-based consent flow. A redirect-based flow for mobile browsers, PWAs, and embedded contexts is coming soon. See [Authentication Types](guides/authentication-types.md) for details.
 
 ## What it does
 

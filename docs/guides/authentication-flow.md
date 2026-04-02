@@ -95,3 +95,7 @@ If any step fails, the SDK:
 3. Throws the error so the calling code can handle it
 
 All errors from the API include the HTTP status code in the message (e.g. `API error 401: ...`).
+
+## Next steps
+
+- [Authentication Types](./authentication-types.md) — popup vs redirect flows and which to use for your platform
