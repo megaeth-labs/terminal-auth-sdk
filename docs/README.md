@@ -2,6 +2,8 @@
 
 `@megaeth-labs/terminal-auth-sdk` is a TypeScript SDK for linking Web3 wallets to MegaETH Terminal user profiles. It handles the full authentication flow: wallet signature challenge, PKCE, consent popup, and token exchange.
 
+**[Live demo](https://auth-sdk-demo-seven.vercel.app/)**
+
 > **Beta**: This library is in beta. The API may change between releases. Mobile app support is not yet available and will be included in the next release, along with an alternative to the popup-based consent flow.
 
 ## What it does
