@@ -1,38 +1,32 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useTerminal, type EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
+import { TerminalWidget, type EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
 import { useAccount } from "wagmi";
+import { useState, useEffect } from "react";
 import type { NextPage } from "next";
 import Head from "next/head";
 import styles from "../styles/Home.module.css";
 
-function isEIP1193Provider(provider: unknown): provider is EIP1193Provider {
-  if (!provider || typeof provider !== "object") return false;
-
-  const candidate = provider as Partial<EIP1193Provider>;
-  return (
-    typeof candidate.request === "function" &&
-    typeof candidate.on === "function" &&
-    typeof candidate.removeListener === "function"
-  );
-}
-
 const Home: NextPage = () => {
   const { isConnected, connector } = useAccount();
-  const { state, connect } = useTerminal();
+  const [provider, setProvider] = useState<EIP1193Provider | undefined>();
 
-  const handleTerminalConnect = async () => {
-    if (!connector) return;
-    try {
-      const provider = await connector.getProvider();
-      if (!isEIP1193Provider(provider)) {
-        throw new Error("Connector provider does not implement full EIP-1193");
-      }
-      await connect(provider);
-      console.log("Terminal connected");
-    } catch (err) {
-      console.error("Terminal connect failed:", err);
+  useEffect(() => {
+    if (!connector) {
+      setProvider(undefined);
+      return;
     }
-  };
+    connector.getProvider().then((p) => {
+      const candidate = p as Partial<EIP1193Provider>;
+      if (
+        candidate &&
+        typeof candidate.request === "function" &&
+        typeof candidate.on === "function" &&
+        typeof candidate.removeListener === "function"
+      ) {
+        setProvider(candidate as EIP1193Provider);
+      }
+    });
+  }, [connector]);
 
   return (
     <div className={styles.container}>
@@ -55,24 +49,39 @@ const Home: NextPage = () => {
         </div>
 
         {isConnected && (
-          <div style={{ marginTop: "2rem", textAlign: "center" }}>
-            <p>Terminal state: <strong>{state}</strong></p>
-            <button
-              onClick={handleTerminalConnect}
-              disabled={state === "connecting" || state === "connected"}
-              style={{
-                marginTop: "1rem",
-                padding: "0.75rem 1.5rem",
-                fontSize: "1rem",
-                cursor: state === "connecting" ? "wait" : "pointer",
+          <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "1.5rem", alignItems: "center" }}>
+            <h3 style={{ margin: 0 }}>Dark (default)</h3>
+            <TerminalWidget
+              provider={provider}
+              theme="dark"
+              onError={(err) => console.error("Terminal error:", err)}
+            />
+
+            <h3 style={{ margin: 0 }}>Light</h3>
+            <TerminalWidget
+              provider={provider}
+              theme="light"
+              onError={(err) => console.error("Terminal error:", err)}
+            />
+
+            <h3 style={{ margin: 0 }}>Accent</h3>
+            <TerminalWidget
+              provider={provider}
+              theme="accent"
+              onError={(err) => console.error("Terminal error:", err)}
+            />
+
+            <h3 style={{ margin: 0 }}>Custom styles</h3>
+            <TerminalWidget
+              provider={provider}
+              theme="dark"
+              styles={{
+                root: { borderRadius: "9999px", padding: "10px 24px" },
+                points: { color: "#f0b90b" },
+                address: { fontWeight: 700 },
               }}
-            >
-              {state === "connected"
-                ? "Connected to Terminal"
-                : state === "connecting"
-                  ? "Connecting..."
-                  : "Connect to Terminal"}
-            </button>
+              onError={(err) => console.error("Terminal error:", err)}
+            />
           </div>
         )}
       </main>
