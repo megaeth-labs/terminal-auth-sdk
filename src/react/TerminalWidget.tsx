@@ -127,9 +127,8 @@ const baseStyles = {
   container: {
     display: "inline-flex",
     alignItems: "center",
-    gap: "20px",
-    borderRadius: "12px",
-    padding: "14px 20px",
+    gap: "12px",
+    padding: "10px 16px",
     fontFamily:
       '"Helvetica Neue", Helvetica, Arial, sans-serif',
     cursor: "pointer",
@@ -170,12 +169,12 @@ const baseStyles = {
     gap: "1px",
   } satisfies CSSProperties,
   address: {
-    fontSize: "22px",
+    fontSize: "15px",
     fontWeight: 400,
     lineHeight: 1.3,
   } satisfies CSSProperties,
   rank: {
-    fontSize: "18px",
+    fontSize: "13px",
     fontWeight: 300,
     lineHeight: 1.3,
     opacity: 0.8,
@@ -183,10 +182,10 @@ const baseStyles = {
   divider: {
     width: "0.5px",
     alignSelf: "stretch",
-    margin: "-14px 0",
+    margin: "-10px 0",
   } satisfies CSSProperties,
   points: {
-    fontSize: "24px",
+    fontSize: "15px",
     fontWeight: 700,
     whiteSpace: "nowrap",
   } satisfies CSSProperties,
@@ -237,7 +236,7 @@ export function TerminalWidget({ provider, onError, theme = "dark", classNames, 
           ...styles?.root,
         }}
       >
-        <TerminalLogo size={47} color={styles?.logo?.color as string ?? tokens.logoFill} />
+        <TerminalLogo size={32} color={styles?.logo?.color as string ?? tokens.logoFill} />
         <div className={classNames?.info} style={{ ...baseStyles.info, ...styles?.info }}>
           <span className={classNames?.address} style={{ ...baseStyles.address, color: tokens.textColor, ...styles?.address }}>
             {truncateAddress(address)}
