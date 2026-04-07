@@ -33,7 +33,7 @@ interface RequestArguments {
 
   interface TerminalSDK {
     config: TerminalSDKConfig;
-    connect: (provider: EIP1193Provider) => Promise<ConnectResult>;
+    connect: (provider: EIP1193Provider, options?: ConnectOptions) => Promise<ConnectResult>;
     disconnect: () => Promise<void>;
     getStats: () => Promise<Stats>;
     getConnectionState(): ConnectionState;
@@ -46,4 +46,11 @@ interface RequestArguments {
     openTerminalProfile(): void;
   }
 
-  export type { TerminalSDKConfig, Stats, TerminalSDK, ConnectionState, EIP1193Provider, ConnectResult };
+  type ConnectMode = 'popup' | 'redirect';
+
+  interface ConnectOptions {
+    mode?: ConnectMode;
+    redirectUri?: string;
+  }
+
+  export type { TerminalSDKConfig, Stats, TerminalSDK, ConnectionState, EIP1193Provider, ConnectResult, ConnectMode, ConnectOptions };

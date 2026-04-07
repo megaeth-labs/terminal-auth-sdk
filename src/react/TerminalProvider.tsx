@@ -10,6 +10,7 @@ import {
 import { TerminalClient } from "../core/client";
 import type {
   ConnectionState,
+  ConnectOptions,
   EIP1193Provider,
   TerminalSDKConfig,
 } from "../core/types";
@@ -31,12 +32,24 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
       setAddress(client.getConnectedAddress());
     };
     client.on("stateChange", onStateChange);
-    client.restoreSession();
+
+    client
+      .handleRedirectCallback()
+      .then((result) => {
+        if (!result) {
+          client.restoreSession();
+        }
+      })
+      .catch(() => {
+        client.restoreSession();
+      });
+
     return () => client.off("stateChange", onStateChange);
   }, [client]);
 
   const connect = useCallback(
-    (provider: EIP1193Provider) => client.connect(provider),
+    (provider: EIP1193Provider, options?: ConnectOptions) =>
+      client.connect(provider, options),
     [client]
   );
 

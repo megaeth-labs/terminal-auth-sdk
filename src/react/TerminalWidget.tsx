@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { EIP1193Provider, Stats } from "../core/types";
+import type { ConnectMode, EIP1193Provider, Stats } from "../core/types";
 import { useTerminal } from "./useTerminal";
 
 export type TerminalWidgetTheme = "dark" | "light" | "accent";
