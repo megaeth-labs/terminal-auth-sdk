@@ -11,8 +11,8 @@ import { generatePKCEPair } from "./pkce";
 import { openPopupAndWaitForCode } from "./popup";
 import {
   generateState,
-  parseRedirectFragment,
-  stripFragment,
+  parseRedirectResult,
+  stripRedirectParams,
 } from "./redirect";
 
 const DEFAULT_BASE_URL =
@@ -168,7 +168,7 @@ export class TerminalClient {
         );
         const popupUrl = verifyResult.authorizeUrl
           ? new URL(verifyResult.authorizeUrl, expectedOrigin).toString()
-          : `${expectedOrigin}/link?challenge_id=${encodeURIComponent(
+          : `${expectedOrigin}/authorize?challenge_id=${encodeURIComponent(
               challengeId
             )}`;
         const popupOrigin = this.parseOriginOrThrow(popupUrl, "authorizeUrl");
@@ -366,10 +366,10 @@ export class TerminalClient {
   }
 
   async handleRedirectCallback(): Promise<ConnectResult | null> {
-    const fragment = parseRedirectFragment();
+    const fragment = parseRedirectResult();
     if (!fragment) return null;
 
-    stripFragment();
+    stripRedirectParams();
 
     const savedData = this.loadAndClearRedirectData();
     if (!savedData) {

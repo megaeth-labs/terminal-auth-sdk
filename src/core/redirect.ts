@@ -10,16 +10,13 @@ export function generateState(length = 32): string {
   return result;
 }
 
-export function parseRedirectFragment(): {
+export function parseRedirectResult(): {
   code: string;
   state: string;
 } | null {
   if (typeof window === "undefined") return null;
 
-  const hash = window.location.hash;
-  if (!hash || hash.length < 2) return null;
-
-  const params = new URLSearchParams(hash.substring(1));
+  const params = new URLSearchParams(window.location.search);
   const code = params.get("code");
   const state = params.get("state");
 
@@ -28,11 +25,11 @@ export function parseRedirectFragment(): {
   return { code, state };
 }
 
-export function stripFragment(): void {
+export function stripRedirectParams(): void {
   if (typeof window === "undefined") return;
-  window.history.replaceState(
-    null,
-    "",
-    window.location.pathname + window.location.search
-  );
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("code");
+  url.searchParams.delete("state");
+  window.history.replaceState(null, "", url.pathname + url.search + url.hash);
 }
