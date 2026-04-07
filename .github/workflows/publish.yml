@@ -28,6 +28,16 @@ jobs:
 
       - run: pnpm build
 
-      - run: npm publish --provenance --access public
+      - name: Publish to NPM
+        run: |
+          set -euxo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          if echo "$VERSION" | grep -q "beta"; then
+            NPM_TAG="beta"
+          else
+            NPM_TAG="latest"
+          fi
+          echo "Publishing $VERSION with $NPM_TAG tag."
+          npm publish --provenance --access public --tag $NPM_TAG
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
