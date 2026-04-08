@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { ConnectMode, EIP1193Provider, Stats } from "../core/types";
+import type { EIP1193Provider, Stats } from "../core/types";
 import { useTerminal } from "./useTerminal";
 
 export type TerminalWidgetTheme = "dark" | "light" | "accent";
@@ -66,7 +66,13 @@ const themeTokens: Record<
   },
 };
 
-function TerminalLogo({ size = 32, color = "white" }: { size?: number; color?: string }) {
+function TerminalLogo({
+  size = 32,
+  color = "white",
+}: {
+  size?: number;
+  color?: string;
+}) {
   return (
     <svg
       width={size}
@@ -129,8 +135,7 @@ const baseStyles = {
     alignItems: "center",
     gap: "12px",
     padding: "10px 16px",
-    fontFamily:
-      '"Helvetica Neue", Helvetica, Arial, sans-serif',
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
     cursor: "pointer",
     textDecoration: "none",
     transition: "background-color 0.15s ease",
@@ -142,8 +147,7 @@ const baseStyles = {
     alignItems: "center",
     gap: "12px",
     padding: "10px 16px",
-    fontFamily:
-      '"Helvetica Neue", Helvetica, Arial, sans-serif',
+    fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
     border: "none",
     cursor: "pointer",
     fontSize: "15px",
@@ -191,7 +195,13 @@ const baseStyles = {
   } satisfies CSSProperties,
 } as const;
 
-export function TerminalWidget({ provider, onError, theme = "dark", classNames, styles }: TerminalWidgetProps) {
+export function TerminalWidget({
+  provider,
+  onError,
+  theme = "dark",
+  classNames,
+  styles,
+}: TerminalWidgetProps) {
   const { state, address, connect, getStats } = useTerminal();
   const [stats, setStats] = useState<Stats | null>(null);
   const tokens = themeTokens[theme];
@@ -209,7 +219,9 @@ export function TerminalWidget({ provider, onError, theme = "dark", classNames, 
       })
       .catch((err) => {
         if (!cancelled)
-          onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)));
+          onErrorRef.current?.(
+            err instanceof Error ? err : new Error(String(err)),
+          );
       });
     return () => {
       cancelled = true;
@@ -236,21 +248,55 @@ export function TerminalWidget({ provider, onError, theme = "dark", classNames, 
           ...styles?.root,
         }}
       >
-        <TerminalLogo size={32} color={styles?.logo?.color as string ?? tokens.logoFill} />
-        <div className={classNames?.info} style={{ ...baseStyles.info, ...styles?.info }}>
-          <span className={classNames?.address} style={{ ...baseStyles.address, color: tokens.textColor, ...styles?.address }}>
+        <TerminalLogo
+          size={32}
+          color={(styles?.logo?.color as string) ?? tokens.logoFill}
+        />
+        <div
+          className={classNames?.info}
+          style={{ ...baseStyles.info, ...styles?.info }}
+        >
+          <span
+            className={classNames?.address}
+            style={{
+              ...baseStyles.address,
+              color: tokens.textColor,
+              ...styles?.address,
+            }}
+          >
             {truncateAddress(address)}
           </span>
           {stats && (
-            <span className={classNames?.rank} style={{ ...baseStyles.rank, color: tokens.rankColor, ...styles?.rank }}>
+            <span
+              className={classNames?.rank}
+              style={{
+                ...baseStyles.rank,
+                color: tokens.rankColor,
+                ...styles?.rank,
+              }}
+            >
               Rank {stats.rank}
             </span>
           )}
         </div>
         {stats && (
           <>
-            <div className={classNames?.divider} style={{ ...baseStyles.divider, backgroundColor: tokens.dividerColor, ...styles?.divider }} />
-            <span className={classNames?.points} style={{ ...baseStyles.points, color: tokens.pointsColor, ...styles?.points }}>
+            <div
+              className={classNames?.divider}
+              style={{
+                ...baseStyles.divider,
+                backgroundColor: tokens.dividerColor,
+                ...styles?.divider,
+              }}
+            />
+            <span
+              className={classNames?.points}
+              style={{
+                ...baseStyles.points,
+                color: tokens.pointsColor,
+                ...styles?.points,
+              }}
+            >
               {formatPoints(stats.totalPoints)} PT
             </span>
           </>
@@ -275,11 +321,21 @@ export function TerminalWidget({ provider, onError, theme = "dark", classNames, 
         ...styles?.root,
       }}
     >
-      <TerminalLogo size={32} color={styles?.logo?.color as string ?? tokens.logoFill} />
-      <span className={classNames?.label} style={{ ...baseStyles.label, color: tokens.textColor, ...styles?.label }}>
+      <TerminalLogo
+        size={32}
+        color={(styles?.logo?.color as string) ?? tokens.logoFill}
+      />
+      <span
+        className={classNames?.label}
+        style={{
+          ...baseStyles.label,
+          color: tokens.textColor,
+          ...styles?.label,
+        }}
+      >
         {state === "connecting" ? "Connecting..." : "Connect To Terminal"}
       </span>
-      <ArrowIcon color={styles?.arrow?.color as string ?? tokens.textColor} />
+      <ArrowIcon color={(styles?.arrow?.color as string) ?? tokens.textColor} />
     </button>
   );
 }
