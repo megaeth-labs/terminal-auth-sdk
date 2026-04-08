@@ -5,45 +5,14 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { TerminalWidget, type EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
 
-function isEIP1193Provider(provider: unknown): provider is EIP1193Provider {
-  if (!provider || typeof provider !== "object") return false;
-
-  const candidate = provider as Partial<EIP1193Provider>;
-  return (
-    typeof candidate.request === "function" &&
-    typeof candidate.on === "function" &&
-    typeof candidate.removeListener === "function"
-  );
-}
-
 export function App() {
   const { isConnected, connector } = useAccount();
-  const [provider, setProvider] = useState<EIP1193Provider | undefined>(undefined);
+  const [provider, setProvider] = useState<EIP1193Provider>();
 
   useEffect(() => {
-    let cancelled = false;
-
-    if (!connector) return;
-
-    connector
-      .getProvider()
-      .then((resolvedProvider) => {
-        if (!cancelled) {
-          setProvider(
-            isEIP1193Provider(resolvedProvider) ? resolvedProvider : undefined
-          );
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setProvider(undefined);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [connector]);
+    if (!isConnected || !connector?.getProvider) return;
+    connector.getProvider().then((p) => setProvider(p as EIP1193Provider));
+  }, [isConnected, connector]);
 
   return (
     <div

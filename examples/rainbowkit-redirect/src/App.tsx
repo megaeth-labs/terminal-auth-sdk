@@ -9,64 +9,24 @@ import {
   type Stats,
 } from "@megaeth-labs/terminal-auth-sdk";
 
-function isEIP1193Provider(provider: unknown): provider is EIP1193Provider {
-  if (!provider || typeof provider !== "object") return false;
-
-  const candidate = provider as Partial<EIP1193Provider>;
-  return (
-    typeof candidate.request === "function" &&
-    typeof candidate.on === "function" &&
-    typeof candidate.removeListener === "function"
-  );
-}
-
 export function App() {
   const { isConnected, connector } = useAccount();
   const { state, address, connect, getStats, disconnect } = useTerminal();
-  const [provider, setProvider] = useState<EIP1193Provider | undefined>(undefined);
+  const [provider, setProvider] = useState<EIP1193Provider>();
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    if (!isConnected || !connector?.getProvider) return;
+    connector.getProvider().then((p) => setProvider(p as EIP1193Provider));
+  }, [isConnected, connector]);
 
-    if (!connector) return;
-
-    connector
-      .getProvider()
-      .then((resolvedProvider) => {
-        if (!cancelled) {
-          setProvider(
-            isEIP1193Provider(resolvedProvider) ? resolvedProvider : undefined
-          );
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setProvider(undefined);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [connector]);
+  const connectedStats = state === "connected";
 
   useEffect(() => {
-    if (state !== "connected") {
-      setStats(null);
-      return;
-    }
-    let cancelled = false;
-    getStats()
-      .then((s) => {
-        if (!cancelled) setStats(s);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [state, getStats]);
+    if (!connectedStats) return;
+    getStats().then(setStats).catch(() => {});
+  }, [connectedStats, getStats]);
 
   const handleConnect = async () => {
     if (!provider) return;
