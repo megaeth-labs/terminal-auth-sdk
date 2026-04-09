@@ -224,7 +224,7 @@ export class TerminalClient {
 
   openTerminalProfile(): void {
     if (typeof window !== "undefined") {
-      window.open(`${this.terminalOrigin}/profile`, "_blank");
+      window.open(`${this.terminalOrigin}/dashboard`, "_blank");
     }
   }
 
