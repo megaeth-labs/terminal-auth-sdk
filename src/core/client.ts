@@ -150,6 +150,20 @@ export class TerminalClient {
           throw new Error("No authorizeUrl returned for redirect flow");
         }
 
+        const expectedOrigin = this.parseOriginOrThrow(
+          this.terminalOrigin,
+          "terminalOrigin"
+        );
+        const redirectOrigin = this.parseOriginOrThrow(
+          authorizeUrl,
+          "authorizeUrl"
+        );
+        if (redirectOrigin !== expectedOrigin) {
+          throw new Error(
+            `authorizeUrl origin mismatch: expected ${expectedOrigin}, got ${redirectOrigin}`
+          );
+        }
+
         this.saveRedirectData({
           codeVerifier,
           state: state!,
