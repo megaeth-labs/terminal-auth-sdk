@@ -67,6 +67,19 @@ export interface PlatformAdapter {
   ): Promise<AuthSessionSuccess | null>;
 
   /**
+   * Read and consume an inbound redirect callback if one is present in the
+   * current environment. Used by the navigate-away (web) flow when the user
+   * returns from the Terminal consent page.
+   *
+   * - Web: parses `code` and `state` from `window.location.search`, then
+   *   strips them from the URL via `history.replaceState` so they don't
+   *   linger in the address bar.
+   * - React Native: returns `null`. The in-process flow resolves entirely
+   *   inside `openAuthSession`, so there is never an inbound URL to consume.
+   */
+  consumeRedirectCallback(): AuthSessionSuccess | null;
+
+  /**
    * Open an external URL (e.g. the Terminal dashboard).
    * Web: `window.open(url, "_blank")`. React Native: `Linking.openURL(url)`.
    */

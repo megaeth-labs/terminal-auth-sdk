@@ -4,6 +4,7 @@ import type {
   PlatformCrypto,
   PlatformStorage,
 } from "../adapter";
+import { parseRedirectResult, stripRedirectParams } from "../redirect";
 
 /**
  * Default web (browser) adapter. Mirrors the SDK's pre-adapter behavior:
@@ -20,6 +21,7 @@ export function createWebAdapter(): PlatformAdapter {
     crypto: webCrypto(),
     getDefaultRedirectUri,
     openAuthSession,
+    consumeRedirectCallback,
     openExternalUrl,
   };
 }
@@ -77,6 +79,15 @@ function openAuthSession(
   // the URL params left behind by the consent page redirect.
   window.location.href = authorizeUrl;
   return new Promise(() => {});
+}
+
+function consumeRedirectCallback(): AuthSessionSuccess | null {
+  if (typeof window === "undefined") return null;
+  const result = parseRedirectResult(window.location.search);
+  if (!result) return null;
+  const cleaned = stripRedirectParams(window.location.href);
+  window.history.replaceState(null, "", cleaned);
+  return result;
 }
 
 function openExternalUrl(url: string): void {

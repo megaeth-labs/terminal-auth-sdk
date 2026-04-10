@@ -1,8 +1,10 @@
+import type { PlatformAdapter } from "./adapter";
+
 interface RequestArguments {
     readonly method: string;
     readonly params?: readonly unknown[] | object;
   }
-  
+
   interface EIP1193Provider {
     request(args: RequestArguments): Promise<unknown>;
     on(event: 'accountsChanged', listener: (accounts: string[]) => void): void;
@@ -15,6 +17,13 @@ interface RequestArguments {
     clientId: string;
     baseUrl?: string;
     terminalOrigin?: string;
+    /**
+     * Platform adapter that provides storage, crypto, and the auth-session
+     * navigation step. Defaults to a browser adapter built from `window`,
+     * `localStorage`, `sessionStorage`, and `crypto.subtle`. Pass an explicit
+     * adapter (e.g. the Expo adapter) when running outside the browser.
+     */
+    adapter?: PlatformAdapter;
   }
 
 
@@ -38,7 +47,7 @@ interface RequestArguments {
     getStats: () => Promise<Stats>;
     getConnectionState(): ConnectionState;
     getProfileId(): string | null;
-    restoreSession(): boolean;
+    restoreSession(provider?: EIP1193Provider): Promise<boolean>;
     on(event: 'stateChange', callback: (state: ConnectionState) => void): void;
     on(event: 'error', callback: (error: Error) => void): void;
     off(event: 'stateChange', callback: (state: ConnectionState) => void): void;

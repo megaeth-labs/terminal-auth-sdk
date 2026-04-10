@@ -35,13 +35,13 @@ export function TerminalProvider({ config, children }: TerminalProviderProps) {
 
     client
       .handleRedirectCallback()
-      .then((result) => {
+      .then(async (result) => {
         if (!result) {
-          client.restoreSession();
+          await client.restoreSession();
         }
       })
-      .catch(() => {
-        client.restoreSession();
+      .catch(async () => {
+        await client.restoreSession();
       });
 
     return () => client.off("stateChange", onStateChange);

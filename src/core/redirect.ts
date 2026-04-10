@@ -1,22 +1,37 @@
+import type { PlatformCrypto } from "./adapter";
+
 const STATE_CHARSET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
-export function generateState(length = 32): string {
-  const random = crypto.getRandomValues(new Uint8Array(length));
+// Rejection sampling: only accept bytes below `max` so the modulo distribution
+// across `STATE_CHARSET` is uniform. Same approach as `generateRandomString`
+// in pkce.ts — both generate OAuth-related random tokens that need an even
+// distribution across the URL-safe alphabet.
+export function generateState(
+  crypto: PlatformCrypto,
+  length = 32
+): string {
+  const max = Math.floor(256 / STATE_CHARSET.length) * STATE_CHARSET.length;
   let result = "";
-  for (let i = 0; i < length; i++) {
-    result += STATE_CHARSET[random[i] % STATE_CHARSET.length];
+  while (result.length < length) {
+    const buf = crypto.getRandomBytes(length);
+    for (let i = 0; i < buf.length && result.length < length; i++) {
+      if (buf[i] < max) {
+        result += STATE_CHARSET[buf[i] % STATE_CHARSET.length];
+      }
+    }
   }
   return result;
 }
 
-export function parseRedirectResult(): {
-  code: string;
-  state: string;
-} | null {
-  if (typeof window === "undefined") return null;
-
-  const params = new URLSearchParams(window.location.search);
+/**
+ * Parse the `code` and `state` query params from a URL search string
+ * (e.g. `window.location.search`). Returns null if either is missing.
+ */
+export function parseRedirectResult(
+  search: string
+): { code: string; state: string } | null {
+  const params = new URLSearchParams(search);
   const code = params.get("code");
   const state = params.get("state");
 
@@ -25,11 +40,14 @@ export function parseRedirectResult(): {
   return { code, state };
 }
 
-export function stripRedirectParams(): void {
-  if (typeof window === "undefined") return;
-
-  const url = new URL(window.location.href);
+/**
+ * Given a full URL, return the path+search+hash with `code` and `state`
+ * query params removed. Caller is responsible for actually replacing the
+ * URL in whichever way is appropriate (e.g. `window.history.replaceState`).
+ */
+export function stripRedirectParams(href: string): string {
+  const url = new URL(href);
   url.searchParams.delete("code");
   url.searchParams.delete("state");
-  window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  return url.pathname + url.search + url.hash;
 }
