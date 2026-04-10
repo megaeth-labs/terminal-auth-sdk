@@ -49,6 +49,7 @@ export class TerminalClient {
   private emitter = new TypedEventEmitter<SDKEvents>();
   private connectedProvider: EIP1193Provider | null = null;
   private accountsChangedHandler: ((accounts: string[]) => void) | null = null;
+  private pendingConnect: Promise<ConnectResult> | null = null;
 
   private get storageKey(): string {
     return `terminal_session_${this.config.clientId}`;
@@ -71,6 +72,17 @@ export class TerminalClient {
   }
 
   async connect(
+    provider: EIP1193Provider,
+    options?: ConnectOptions
+  ): Promise<ConnectResult> {
+    if (this.pendingConnect) return this.pendingConnect;
+    this.pendingConnect = this.connectInner(provider, options).finally(() => {
+      this.pendingConnect = null;
+    });
+    return this.pendingConnect;
+  }
+
+  private async connectInner(
     provider: EIP1193Provider,
     options?: ConnectOptions
   ): Promise<ConnectResult> {
