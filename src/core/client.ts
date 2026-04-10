@@ -556,7 +556,9 @@ export class TerminalClient {
     if (parts.length !== 3 || !parts[1]) {
       throw new Error("Invalid access token format");
     }
-    const payload = JSON.parse(atob(parts[1]));
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
     if (typeof payload.profile_id !== "string" || !payload.profile_id) {
       throw new Error("Access token missing profile_id");
     }
