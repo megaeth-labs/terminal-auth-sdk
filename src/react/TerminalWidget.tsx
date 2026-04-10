@@ -204,6 +204,7 @@ export function TerminalWidget({
 }: TerminalWidgetProps) {
   const { state, address, connect, getStats } = useTerminal();
   const [stats, setStats] = useState<Stats | null>(null);
+  const displayedStats = state === "connected" && address ? stats : null;
   const tokens = themeTokens[theme];
   const onErrorRef = useRef(onError);
   useEffect(() => {
@@ -266,7 +267,7 @@ export function TerminalWidget({
           >
             {truncateAddress(address)}
           </span>
-          {stats && (
+          {displayedStats && (
             <span
               className={classNames?.rank}
               style={{
@@ -275,11 +276,11 @@ export function TerminalWidget({
                 ...styles?.rank,
               }}
             >
-              Rank {stats.rank}
+              Rank {displayedStats.rank}
             </span>
           )}
         </div>
-        {stats && (
+        {displayedStats && (
           <>
             <div
               className={classNames?.divider}
@@ -297,7 +298,7 @@ export function TerminalWidget({
                 ...styles?.points,
               }}
             >
-              {formatPoints(stats.totalPoints)} PT
+              {formatPoints(displayedStats.totalPoints)} PT
             </span>
           </>
         )}
