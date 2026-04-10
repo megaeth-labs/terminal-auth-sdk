@@ -11,9 +11,13 @@ import { App } from "./App";
 const queryClient = new QueryClient();
 
 const terminalConfig = {
-  clientId: import.meta.env.VITE_TERMINAL_CLIENT_ID ?? "1",
-  ...(import.meta.env.VITE_TERMINAL_API_URL && { baseUrl: import.meta.env.VITE_TERMINAL_API_URL }),
-  ...(import.meta.env.VITE_TERMINAL_ORIGIN && { terminalOrigin: import.meta.env.VITE_TERMINAL_ORIGIN }),
+  clientId: import.meta.env.VITE_TERMINAL_CLIENT_ID ?? "test",
+  ...(import.meta.env.VITE_TERMINAL_API_URL && {
+    baseUrl: import.meta.env.VITE_TERMINAL_API_URL,
+  }),
+  ...(import.meta.env.VITE_TERMINAL_ORIGIN && {
+    terminalOrigin: import.meta.env.VITE_TERMINAL_ORIGIN,
+  }),
 };
 
 createRoot(document.getElementById("root")!).render(
@@ -27,5 +31,5 @@ createRoot(document.getElementById("root")!).render(
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
-  </StrictMode>
+  </StrictMode>,
 );
