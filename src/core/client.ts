@@ -281,7 +281,7 @@ export class TerminalClient {
     return this.profileId;
   }
 
-  restoreSession(): boolean {
+  async restoreSession(provider?: EIP1193Provider): Promise<boolean> {
     if (this.connectionState === "connected") {
       return true;
     }
@@ -307,10 +307,36 @@ export class TerminalClient {
         return false;
       }
 
+      // If a provider is given, verify the currently selected wallet still
+      // matches the stored session before trusting it. Without this guard, a
+      // user who switched wallets while the app was closed would be restored
+      // as the previous wallet.
+      if (provider) {
+        try {
+          const accounts = (await provider.request({
+            method: "eth_accounts",
+          })) as string[];
+          const currentWallet = accounts[0]?.toLowerCase();
+          if (
+            !currentWallet ||
+            currentWallet !== data.connectedAddress.toLowerCase()
+          ) {
+            this.clearSession();
+            return false;
+          }
+        } catch {
+          this.clearSession();
+          return false;
+        }
+      }
+
       this.accessToken = data.accessToken;
       this.profileId = data.profileId;
       this.tokenExpiresAt = data.tokenExpiresAt;
       this.connectedAddress = data.connectedAddress;
+      if (provider) {
+        this.subscribeAccountChanges(provider);
+      }
       this.setState("connected");
 
       return true;
