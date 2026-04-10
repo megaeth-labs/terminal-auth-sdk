@@ -10,8 +10,17 @@ export function App() {
   const [provider, setProvider] = useState<EIP1193Provider>();
 
   useEffect(() => {
-    if (!isConnected || !connector?.getProvider) return;
-    connector.getProvider().then((p) => setProvider(p as EIP1193Provider));
+    if (!isConnected || !connector?.getProvider) {
+      setProvider(undefined);
+      return;
+    }
+    let cancelled = false;
+    connector.getProvider().then((p) => {
+      if (!cancelled) setProvider(p as EIP1193Provider);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [isConnected, connector]);
 
   return (
