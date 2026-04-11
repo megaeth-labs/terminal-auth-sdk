@@ -13,5 +13,10 @@
     "declarationDir": "./dist",
     "outDir": "./dist"
   },
-  "include": ["src/index.ts", "src/core/index.ts"]
+  "include": [
+    "src/index.ts",
+    "src/core/index.ts",
+    "src/react-native/index.ts",
+    "src/react-native/expo-modules.d.ts"
+  ]
 }

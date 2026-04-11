@@ -121,7 +121,19 @@ export class TerminalClient {
 
     this.setState("connecting");
 
-    const mode = options?.mode ?? "popup";
+    // Choose the auth mode. When the caller doesn't specify, fall back
+    // to the adapter's preferred default (first entry in `supportedModes`).
+    // When the caller does specify, validate against the adapter's
+    // capabilities so a consumer on React Native can't accidentally
+    // request popup mode and crash on `window is not defined`.
+    const mode = options?.mode ?? this.adapter.supportedModes[0];
+    if (!this.adapter.supportedModes.includes(mode)) {
+      this.setState("disconnected");
+      throw new Error(
+        `Connect mode "${mode}" is not supported by the active platform adapter ` +
+          `(supported: ${this.adapter.supportedModes.join(", ")})`
+      );
+    }
 
     try {
       const address = await this.getAddress(provider);

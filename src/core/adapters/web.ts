@@ -19,6 +19,9 @@ export function createWebAdapter(): PlatformAdapter {
     persistent: webStorage(() => globalThis.localStorage),
     ephemeral: webStorage(() => globalThis.sessionStorage),
     crypto: webCrypto(),
+    // Popup first so the default `connect()` call retains its pre-adapter
+    // behavior on web. Consumers who want redirect must opt in explicitly.
+    supportedModes: ["popup", "redirect"] as const,
     getDefaultRedirectUri,
     openAuthSession,
     consumeRedirectCallback,

@@ -76,6 +76,11 @@ export function createExpoAdapter(
     persistent: options.persistent ?? createSecureStoreBackend(),
     ephemeral: options.ephemeral ?? createMemoryStorage(),
     crypto: options.crypto ?? createExpoCrypto(),
+    // Redirect only. Native apps cannot open popups — the adapter has no
+    // `window.open` equivalent, and `openAuthSession` drives the in-app
+    // browser via `expo-web-browser`. Requesting `mode: "popup"` from a
+    // consumer will be rejected by `TerminalClient.connect()`.
+    supportedModes: ["redirect"] as const,
     getDefaultRedirectUri: () => Linking.createURL(redirectPath),
     openAuthSession,
     consumeRedirectCallback,

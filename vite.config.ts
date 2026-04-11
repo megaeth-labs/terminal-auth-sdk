@@ -19,6 +19,7 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, "src/index.ts"),
         core: resolve(__dirname, "src/core/index.ts"),
+        "react-native": resolve(__dirname, "src/react-native/index.ts"),
       },
       formats: ["es"],
     },

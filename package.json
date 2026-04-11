@@ -21,6 +21,10 @@
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core.js"
+    },
+    "./react-native": {
+      "types": "./dist/react-native/index.d.ts",
+      "import": "./dist/react-native.js"
     }
   },
   "files": [

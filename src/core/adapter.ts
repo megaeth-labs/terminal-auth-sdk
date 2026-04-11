@@ -1,3 +1,5 @@
+import type { ConnectMode } from "./types";
+
 /**
  * Platform abstraction for the SDK.
  *
@@ -37,6 +39,20 @@ export interface PlatformAdapter {
   ephemeral: PlatformStorage;
   /** Cryptographic primitives. */
   crypto: PlatformCrypto;
+
+  /**
+   * Connect modes this adapter can drive. Non-empty. The first entry is
+   * used as the default when the caller of `TerminalClient.connect()`
+   * does not pass an explicit `mode`. `TerminalClient` also uses this
+   * list to reject explicit modes the adapter cannot support — e.g.
+   * requesting `mode: "popup"` on a React Native adapter throws a clear
+   * error instead of crashing on `window is not defined`.
+   *
+   * - Web adapter: `["popup", "redirect"]` — popup is default for
+   *   backwards compatibility with the pre-adapter SDK.
+   * - Expo adapter: `["redirect"]` — native apps cannot open popups.
+   */
+  supportedModes: readonly ConnectMode[];
 
   /**
    * Default redirect URI when the consumer doesn't pass one to `connect`.
