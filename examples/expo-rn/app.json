@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Terminal SDK Expo Example",
+    "slug": "terminal-auth-sdk-expo-example",
+    "version": "0.0.1",
+    "scheme": "auth-sdk-expo-example",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.megaethlabs.terminalauthsdk.example"
+    },
+    "android": {
+      "package": "com.megaethlabs.terminalauthsdk.example",
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser"
+    ]
+  }
+}
