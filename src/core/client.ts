@@ -49,6 +49,7 @@ export class TerminalClient {
   private emitter = new TypedEventEmitter<SDKEvents>();
   private connectedProvider: EIP1193Provider | null = null;
   private accountsChangedHandler: ((accounts: string[]) => void) | null = null;
+  private pendingConnect: Promise<ConnectResult> | null = null;
 
   private get storageKey(): string {
     return `terminal_session_${this.config.clientId}`;
@@ -71,6 +72,17 @@ export class TerminalClient {
   }
 
   async connect(
+    provider: EIP1193Provider,
+    options?: ConnectOptions
+  ): Promise<ConnectResult> {
+    if (this.pendingConnect) return this.pendingConnect;
+    this.pendingConnect = this.connectInner(provider, options).finally(() => {
+      this.pendingConnect = null;
+    });
+    return this.pendingConnect;
+  }
+
+  private async connectInner(
     provider: EIP1193Provider,
     options?: ConnectOptions
   ): Promise<ConnectResult> {
@@ -269,7 +281,7 @@ export class TerminalClient {
     return this.profileId;
   }
 
-  restoreSession(): boolean {
+  async restoreSession(provider?: EIP1193Provider): Promise<boolean> {
     if (this.connectionState === "connected") {
       return true;
     }
@@ -295,10 +307,36 @@ export class TerminalClient {
         return false;
       }
 
+      // If a provider is given, verify the currently selected wallet still
+      // matches the stored session before trusting it. Without this guard, a
+      // user who switched wallets while the app was closed would be restored
+      // as the previous wallet.
+      if (provider) {
+        try {
+          const accounts = (await provider.request({
+            method: "eth_accounts",
+          })) as string[];
+          const currentWallet = accounts[0]?.toLowerCase();
+          if (
+            !currentWallet ||
+            currentWallet !== data.connectedAddress.toLowerCase()
+          ) {
+            this.clearSession();
+            return false;
+          }
+        } catch {
+          this.clearSession();
+          return false;
+        }
+      }
+
       this.accessToken = data.accessToken;
       this.profileId = data.profileId;
       this.tokenExpiresAt = data.tokenExpiresAt;
       this.connectedAddress = data.connectedAddress;
+      if (provider) {
+        this.subscribeAccountChanges(provider);
+      }
       this.setState("connected");
 
       return true;
@@ -544,7 +582,9 @@ export class TerminalClient {
     if (parts.length !== 3 || !parts[1]) {
       throw new Error("Invalid access token format");
     }
-    const payload = JSON.parse(atob(parts[1]));
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
     if (typeof payload.profile_id !== "string" || !payload.profile_id) {
       throw new Error("Access token missing profile_id");
     }

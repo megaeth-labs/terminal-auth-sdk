@@ -6,10 +6,13 @@ export interface PKCEPair {
 function generateRandomString(length: number): string {
   const charset =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
-  const random = crypto.getRandomValues(new Uint8Array(length));
+  const max = Math.floor(256 / charset.length) * charset.length;
   let result = "";
-  for (let i = 0; i < length; i++) {
-    result += charset[random[i] % charset.length];
+  while (result.length < length) {
+    const buf = crypto.getRandomValues(new Uint8Array(length));
+    for (let i = 0; i < buf.length && result.length < length; i++) {
+      if (buf[i] < max) result += charset[buf[i] % charset.length];
+    }
   }
   return result;
 }
