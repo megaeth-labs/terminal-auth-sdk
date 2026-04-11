@@ -12,6 +12,8 @@ import type {
 } from "../core/adapter";
 import { parseRedirectResult } from "../core/redirect";
 
+const SECURE_STORE_KEY_PREFIX = "terminal_auth_sdk_";
+
 /**
  * Options for customizing the Expo adapter. Every field is optional —
  * leave them all unset to get the default behavior described in
@@ -130,15 +132,40 @@ function createSecureStoreBackend(): PlatformStorage {
   return {
     async getItem(key) {
       await ensureAvailable();
-      return SecureStore.getItemAsync(normalizeSecureStoreKey(key));
+      const secureKey = await deriveSecureStoreKey(key);
+      const value = await SecureStore.getItemAsync(secureKey);
+      if (value !== null) return value;
+
+      // Backward compatibility for sessions written before the hashed-key
+      // migration. If found, migrate forward to the collision-resistant key.
+      const legacyKey = normalizeLegacySecureStoreKey(key);
+      const legacyValue = await SecureStore.getItemAsync(legacyKey);
+      if (legacyValue === null) return null;
+      try {
+        await SecureStore.setItemAsync(secureKey, legacyValue);
+        await SecureStore.deleteItemAsync(legacyKey);
+      } catch {
+        // Migration is best-effort; still return the recovered value.
+      }
+      return legacyValue;
     },
     async setItem(key, value) {
       await ensureAvailable();
-      await SecureStore.setItemAsync(normalizeSecureStoreKey(key), value);
+      const secureKey = await deriveSecureStoreKey(key);
+      await SecureStore.setItemAsync(secureKey, value);
+      const legacyKey = normalizeLegacySecureStoreKey(key);
+      if (legacyKey !== secureKey) {
+        await SecureStore.deleteItemAsync(legacyKey).catch(() => {});
+      }
     },
     async removeItem(key) {
       await ensureAvailable();
-      await SecureStore.deleteItemAsync(normalizeSecureStoreKey(key));
+      const secureKey = await deriveSecureStoreKey(key);
+      await SecureStore.deleteItemAsync(secureKey);
+      const legacyKey = normalizeLegacySecureStoreKey(key);
+      if (legacyKey !== secureKey) {
+        await SecureStore.deleteItemAsync(legacyKey).catch(() => {});
+      }
     },
   };
 }
@@ -164,15 +191,53 @@ export function createAsyncStorageBackend(): PlatformStorage {
 }
 
 /**
- * SecureStore keys on iOS/Android accept only alphanumerics plus
- * `.-_`. The SDK's storage keys (e.g. `terminal_session_<clientId>`)
- * may contain characters outside this set depending on the clientId,
- * so non-matching characters are collapsed to `_` to produce a safe
- * key. Collisions between substitutions are acceptable because the
- * clientId is fixed per app install, so only one key ever exists.
+ * Legacy key normalization kept only for backward-compatible migration
+ * of values written by older SDK versions.
  */
-function normalizeSecureStoreKey(key: string): string {
+function normalizeLegacySecureStoreKey(key: string): string {
   return key.replace(/[^A-Za-z0-9._-]/g, "_");
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  let out = "";
+  for (let i = 0; i < bytes.length; i++) {
+    out += bytes[i].toString(16).padStart(2, "0");
+  }
+  return out;
+}
+
+/**
+ * Collision-resistant key derivation for SecureStore. This avoids key
+ * overlap between different client IDs that could happen with lossy
+ * character replacement.
+ */
+async function deriveSecureStoreKey(key: string): Promise<string> {
+  const digest = await Crypto.digest(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    new TextEncoder().encode(key)
+  );
+  return `${SECURE_STORE_KEY_PREFIX}${bytesToHex(new Uint8Array(digest))}`;
+}
+
+function parseUrlOrThrow(url: string, label: string): URL {
+  try {
+    return new URL(url);
+  } catch {
+    throw new Error(`Invalid ${label}: ${url}`);
+  }
+}
+
+function normalizePathname(pathname: string): string {
+  if (!pathname || pathname === "/") return "/";
+  return pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
+}
+
+function sameRedirectTarget(a: URL, b: URL): boolean {
+  return (
+    a.protocol.toLowerCase() === b.protocol.toLowerCase() &&
+    a.host.toLowerCase() === b.host.toLowerCase() &&
+    normalizePathname(a.pathname) === normalizePathname(b.pathname)
+  );
 }
 
 /**
@@ -230,9 +295,15 @@ async function openAuthSession(
     );
   }
 
-  const queryIndex = result.url.indexOf("?");
-  const search = queryIndex === -1 ? "" : result.url.slice(queryIndex);
-  const parsed = parseRedirectResult(search);
+  const callbackUrl = parseUrlOrThrow(result.url, "auth callback URL");
+  const expectedRedirectUrl = parseUrlOrThrow(redirectUri, "redirectUri");
+  if (!sameRedirectTarget(callbackUrl, expectedRedirectUrl)) {
+    throw new Error(
+      `Terminal auth session callback URL mismatch: expected ${redirectUri}, got ${result.url}`
+    );
+  }
+
+  const parsed = parseRedirectResult(callbackUrl.search);
   if (!parsed) {
     throw new Error(
       "Terminal auth session returned a URL without code/state params"

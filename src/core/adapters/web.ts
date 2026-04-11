@@ -95,6 +95,9 @@ function consumeRedirectCallback(): AuthSessionSuccess | null {
 
 function openExternalUrl(url: string): void {
   if (typeof window !== "undefined") {
-    window.open(url, "_blank");
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    if (popup) {
+      popup.opener = null;
+    }
   }
 }

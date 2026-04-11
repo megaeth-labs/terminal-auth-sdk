@@ -19,11 +19,11 @@ import { createExpoAdapter, type CreateExpoAdapterOptions } from "./adapter";
 
 interface TerminalProviderProps {
   /**
-   * SDK configuration. Must include `clientId`. The `adapter` field is
-   * ignored — the provider always installs an Expo adapter built from
-   * `adapterOptions`. If you need a custom platform adapter, construct
-   * a `TerminalClient` directly with `new TerminalClient({ adapter })`
-   * and pair it with the shared `TerminalContext`.
+   * SDK configuration. Must include `clientId`.
+   *
+   * If `config.adapter` is provided, the provider uses it as-is.
+   * Otherwise it installs a default Expo adapter built from
+   * `adapterOptions`.
    */
   config: TerminalSDKConfig;
   /**
