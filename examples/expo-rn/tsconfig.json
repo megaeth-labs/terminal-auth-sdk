@@ -3,10 +3,15 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "lib": ["DOM", "ESNext"],
+    "lib": [
+      "DOM",
+      "ESNext"
+    ],
     "moduleResolution": "bundler",
     "moduleDetection": "force",
-    "customConditions": ["react-native"],
+    "customConditions": [
+      "react-native"
+    ],
     "resolveJsonModule": true,
     "allowJs": true,
     "jsx": "react-native",
@@ -15,6 +20,17 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["App.tsx", "index.ts", "src/**/*"],
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "android", "ios"]
+  "include": [
+    "App.tsx",
+    "index.ts",
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "android",
+    "ios"
+  ],
+  "extends": "expo/tsconfig.base"
 }

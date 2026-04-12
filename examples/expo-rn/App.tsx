@@ -28,7 +28,15 @@ export default function App() {
   }
 
   return (
-    <PrivyProvider appId={privyAppId} clientId={privyClientId}>
+    <PrivyProvider
+      appId={privyAppId}
+      clientId={privyClientId}
+      config={{
+        embedded: {
+          ethereum: { createOnLogin: "users-without-wallets" },
+        },
+      }}
+    >
       <TerminalProvider config={terminalConfig}>
         <SafeAreaView style={styles.safeArea}>
           <StatusBar style="auto" />
