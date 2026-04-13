@@ -20,7 +20,7 @@ End-to-end reference implementation of [`@megaeth-labs/terminal-auth-sdk`](../..
 - Xcode 16+ (macOS, for iOS)
 - Android Studio + an emulator (for Android)
 - A Privy account with an app created at [dashboard.privy.io](https://dashboard.privy.io)
-- Backend team has allowlisted `auth-sdk-expo-example://terminal-auth` as a redirect URI for the `clientId` set in `.env`
+- Backend team has allowlisted `com.megaethlabs.terminalauthsdk.example://terminal-auth` as a redirect URI for the `clientId` set in `.env`
 
 ## Setup
 
@@ -39,11 +39,11 @@ End-to-end reference implementation of [`@megaeth-labs/terminal-auth-sdk`](../..
    Edit `examples/expo-rn/.env`:
    - `EXPO_PUBLIC_PRIVY_APP_ID` — from the Privy dashboard (App settings)
    - `EXPO_PUBLIC_PRIVY_CLIENT_ID` — from the Privy dashboard (Clients section, starts with `client-`)
-   - `EXPO_PUBLIC_TERMINAL_CLIENT_ID` — the Terminal client ID the backend team has allowlisted for `auth-sdk-expo-example://terminal-auth`
+   - `EXPO_PUBLIC_TERMINAL_CLIENT_ID` — the Terminal client ID the backend team has allowlisted for `com.megaethlabs.terminalauthsdk.example://terminal-auth`
 
 3. In your Privy dashboard, add this example's app identifier + URL scheme to the allowlist for your app. The values are:
    - App identifier: `com.megaethlabs.terminalauthsdk.example`
-   - URL scheme: `auth-sdk-expo-example`
+   - URL scheme: `com.megaethlabs.terminalauthsdk.example`
 
 ## Run
 
@@ -74,7 +74,7 @@ The first build takes 5–15 minutes because it compiles the native side of the 
 
 - **`"SecureStore is not available on this platform"`** — you're running in Expo Go or a web build. Use `expo run:ios` / `run:android`.
 - **`"Terminal auth session did not complete (type=cancel)"`** — you closed the in-app browser before approving. Try again.
-- **`"state mismatch"` or `"callback URL mismatch"`** — the redirect URI coming back from the backend doesn't match the example's scheme. Confirm with the backend team that `auth-sdk-expo-example://terminal-auth` is on the allowlist for your `clientId`.
+- **`"state mismatch"` or `"callback URL mismatch"`** — the redirect URI coming back from the backend doesn't match the example's scheme. Confirm with the backend team that `com.megaethlabs.terminalauthsdk.example://terminal-auth` is on the allowlist for your `clientId`.
 - **`"Missing Privy credentials"`** — `.env` isn't being read. Confirm the file exists at `examples/expo-rn/.env` and has both `EXPO_PUBLIC_PRIVY_APP_ID` and `EXPO_PUBLIC_PRIVY_CLIENT_ID` set.
 - **Privy login errors about app identifier** — register `com.megaethlabs.terminalauthsdk.example` as an allowed app identifier in your Privy dashboard.
 

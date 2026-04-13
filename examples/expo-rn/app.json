@@ -3,7 +3,7 @@
     "name": "Terminal SDK Expo Example",
     "slug": "terminal-auth-sdk-expo-example",
     "version": "0.0.1",
-    "scheme": "auth-sdk-expo-example",
+    "scheme": "com.megaethlabs.terminalauthsdk.example",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
