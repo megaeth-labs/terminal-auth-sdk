@@ -87,6 +87,3 @@ Make sure the same `redirectUri` (including path/query if used) is allowlisted f
 
 Use `@megaeth-labs/terminal-auth-sdk/react-native` and configure your app scheme/deep link.
 
-## Release channel note
-
-Feature availability depends on the version/channel you install (`latest` vs `@beta`). If you need newest redirect/mobile updates before stable promotion, install `@beta`.
