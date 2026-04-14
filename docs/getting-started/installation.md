@@ -1,27 +1,15 @@
 # Installation
 
-## Choose a release channel
-
 ```bash
-# stable
 npm install @megaeth-labs/terminal-auth-sdk
-
-# beta (use when you want newest features before stable promotion)
-npm install @megaeth-labs/terminal-auth-sdk@beta
 ```
-
-Equivalent commands:
 
 ```bash
 pnpm add @megaeth-labs/terminal-auth-sdk
-# or
-pnpm add @megaeth-labs/terminal-auth-sdk@beta
 ```
 
 ```bash
 yarn add @megaeth-labs/terminal-auth-sdk
-# or
-yarn add @megaeth-labs/terminal-auth-sdk@beta
 ```
 
 ## Peer dependencies

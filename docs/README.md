@@ -6,13 +6,6 @@ The SDK handles wallet signature challenge, PKCE, consent (popup or redirect), a
 
 **[Live demo](https://auth-sdk-demo-seven.vercel.app/)**
 
-## Release channels
-
-- `latest`: stable channel
-- `beta`: newest updates before stable promotion
-
-If you specifically need the newest redirect/mobile updates and your stable version does not have them yet, install `@beta`.
-
 ## What it does
 
 When a user connects, the SDK:

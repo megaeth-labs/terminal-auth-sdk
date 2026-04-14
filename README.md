@@ -4,16 +4,10 @@ TypeScript SDK for linking EIP-1193 wallets to MegaETH Terminal profiles.
 
 It handles the full auth flow: wallet signature challenge, PKCE, consent (popup or redirect), and token exchange.
 
-## Release channels
-
-Install `latest` for stable releases, or `beta` to try features that may land there first.
+## Installation
 
 ```bash
-# stable
 npm install @megaeth-labs/terminal-auth-sdk
-
-# beta (recommended if you specifically need the newest redirect/mobile updates)
-npm install @megaeth-labs/terminal-auth-sdk@beta
 ```
 
 ## Features
