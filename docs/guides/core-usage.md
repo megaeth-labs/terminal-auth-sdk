@@ -1,10 +1,10 @@
 # Core Usage
 
-The `@megaeth-labs/terminal-auth-sdk/core` entry point exports `TerminalClient` without any React dependency. Use this if you are not using React, or if you want full manual control over state management.
+Use `@megaeth-labs/terminal-auth-sdk/core` when you are not using React or need full control.
 
 ## Setup
 
-```typescript
+```ts
 import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk/core";
 
 const client = new TerminalClient({
@@ -12,116 +12,72 @@ const client = new TerminalClient({
 });
 ```
 
-## Restoring a session
+## Restore session
 
-The client automatically saves sessions to `localStorage` after a successful `connect()`. Call `restoreSession()` to resume an existing session without re-authenticating:
-
-```typescript
-const restored = client.restoreSession();
+```ts
+const restored = await client.restoreSession(provider);
 if (restored) {
   console.log("Session restored");
-} else {
-  // No valid session — need to connect
 }
 ```
 
-If the stored session is expired or invalid, `restoreSession()` clears it and returns `false`.
+`restoreSession(provider?)` returns `Promise<boolean>`.
 
-## Connecting
+## Connect
 
-Pass any EIP-1193 compatible provider to `connect`. The method resolves with an `accessToken`, `expiresIn`, and `profileId` on success, or throws on failure.
+```ts
+await client.connect(provider); // popup default on web
 
-```typescript
-await client.connect(window.ethereum);
-console.log("Connected to Terminal");
+await client.connect(provider, { mode: "redirect" });
+
+await client.connect(provider, {
+  mode: "redirect",
+  redirectUri: "https://your-app.com/auth/terminal-callback",
+});
+
+// Query params are fine for driving UI state (must match allowlist exactly)
+await client.connect(provider, {
+  mode: "redirect",
+  redirectUri: "https://your-app.com/auth/terminal-callback?screen=terminal",
+});
 ```
 
-## Fetching data
+`redirectUri` is just the return location after consent. It does not need a dedicated callback page with business logic.
 
-`getStats` requires an active connection. It throws if called when disconnected.
+## Fetch stats
 
-```typescript
+```ts
 const stats = await client.getStats();
-console.log(stats.rank);        // 42
-console.log(stats.totalPoints); // 1500
+console.log(stats.rank, stats.totalPoints);
 ```
 
-## Disconnecting
+## Disconnect
 
-```typescript
+```ts
 await client.disconnect();
 ```
 
-This clears the access token and stored session, unsubscribes from wallet account change events, and transitions the state to `"disconnected"`.
+## Redirect callback handling (web)
 
-## Listening to events
+When using navigate-away redirect on web, run this once during app bootstrap:
 
-`TerminalClient` is an event emitter. Subscribe to `stateChange` to react to connection state transitions, and to `error` to handle failures.
-
-```typescript
-client.on("stateChange", (state) => {
-  console.log("State:", state); // "connecting" | "connected" | "disconnected"
-});
-
-client.on("error", (err) => {
-  console.error("Terminal error:", err.message);
-});
-
-// Remove a listener when done
-client.off("stateChange", handler);
-```
-
-## Checking current state
-
-```typescript
-const state = client.getConnectionState();
-// "connected" | "connecting" | "disconnected"
-
-const address = client.getConnectedAddress();
-// "0xabc..." or null
-
-const profileId = client.getProfileId();
-// "prof_..." or null
-```
-
-## Opening the Terminal profile
-
-```typescript
-client.openTerminalProfile();
-// Opens the user's Terminal profile in a new tab
-```
-
-## Full example
-
-```typescript
-import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk/core";
-
-const client = new TerminalClient({ clientId: "your-client-id" });
-
-client.on("stateChange", (state) => {
-  document.getElementById("status").textContent = state;
-});
-
-client.on("error", (err) => {
-  console.error(err);
-});
-
-// Restore a previous session if available
-client.restoreSession();
-
-async function connect() {
-  await client.connect(window.ethereum);
-  console.log("Connected to Terminal");
-
-  const stats = await client.getStats();
-  console.log(`Rank ${stats.rank} — ${stats.totalPoints} PT`);
-}
-
-async function disconnect() {
-  await client.disconnect();
+```ts
+const result = await client.handleRedirectCallback();
+if (!result) {
+  await client.restoreSession(provider);
 }
 ```
 
-## Account change detection
+The SDK only consumes OAuth params (`code`, `state`). Keep your callback URL stable and allowlisted exactly.
 
-After connecting, the SDK automatically listens for `accountsChanged` events on the provider. If the user switches to a different wallet account, the SDK disconnects automatically, clears the stored session, and emits `stateChange: disconnected`. No manual cleanup is needed.
+## Events
+
+```ts
+client.on("stateChange", (state) => {
+  console.log(state);
+});
+
+client.on("error", (err) => {
+  console.error(err.message);
+});
+```

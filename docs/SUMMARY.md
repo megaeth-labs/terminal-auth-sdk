@@ -19,6 +19,7 @@
 - [RainbowKit](examples/rainbowkit.md)
 - [Next.js](examples/nextjs.md)
 - [Privy](examples/privy.md)
+- [Expo (React Native)](examples/expo-rn.md)
 
 ## API Reference
 

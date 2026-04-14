@@ -1,75 +1,52 @@
 # Examples
 
-This directory contains example projects demonstrating how to integrate `@megaeth-labs/terminal-auth-sdk` with different frameworks and wallet providers.
+This directory contains integration examples for `@megaeth-labs/terminal-auth-sdk`.
 
 ## Overview
 
 | Example | Framework | Wallet Provider | Auth Mode | Description |
 | --- | --- | --- | --- | --- |
-| [nextjs](./nextjs) | Next.js (Pages Router) | RainbowKit | Widget (popup) | Full-featured Next.js integration with theme customization |
-| [privy](./privy) | Next.js (App Router) | Privy | Widget (popup) | Privy embedded wallet integration |
-| [rainbowkit](./rainbowkit) | Vite + React | RainbowKit | Widget (popup) | Minimal SPA setup |
-| [rainbowkit-redirect](./rainbowkit-redirect) | Vite + React | RainbowKit | Redirect | Custom UI with redirect auth flow and stats display |
+| [nextjs](./nextjs) | Next.js (Pages Router) | RainbowKit | Widget (popup default) | Full Next.js integration |
+| [privy](./privy) | Next.js (App Router) | Privy | Widget (popup default) | Privy embedded wallet integration |
+| [rainbowkit](./rainbowkit) | Vite + React | RainbowKit | Widget (popup default) | Minimal SPA setup |
+| [rainbowkit-redirect](./rainbowkit-redirect) | Vite + React | RainbowKit | Redirect | Manual redirect flow with custom UI |
+| [expo-rn](./expo-rn) | Expo (React Native) | Privy | Redirect (deep link) | Native mobile integration |
 
-## Getting Started
+## Quick start
 
-Each example requires environment variables. Copy the `.env.example` (or `.env.local.example`) file in the example directory and fill in your values:
+From repo root:
 
 ```bash
-cd examples/<example-name>
-cp .env.example .env        # or .env.local.example → .env.local for Next.js
-npm install
-npm run dev
+pnpm install
+pnpm --filter <example-name> run <script>
 ```
 
-### Required Environment Variables
+Examples:
 
-- **WalletConnect Project ID** — Get one at [cloud.walletconnect.com](https://cloud.walletconnect.com)
-- **Privy App ID** (privy example only) — Get one at [privy.io](https://www.privy.io)
-- **Terminal Client ID** — Your Terminal SDK client ID
-
-## Examples
-
-### Next.js + RainbowKit
-
-Demonstrates a full Next.js Pages Router integration. Shows how to wrap your app with `TerminalProvider`, extract the EIP-1193 provider from wagmi, and render `TerminalWidget` with multiple theme options (dark, light, accent).
-
-```
-examples/nextjs/
-├── src/pages/_app.tsx        # Provider setup
-├── src/pages/index.tsx       # Widget with theme variants
-└── src/wagmi.ts              # Chain configuration
+```bash
+pnpm --filter rainbowkit run dev
+pnpm --filter rainbowkit-redirect run dev
+pnpm --filter nextjs run dev
+pnpm --filter privy run dev
+pnpm --filter example-expo-rn run ios
+pnpm --filter example-expo-rn run android
 ```
 
-### Privy
+## Environment variables
 
-Demonstrates using Privy as the wallet provider instead of RainbowKit. Privy supports embedded wallets for users who don't have a browser wallet installed. Shows how to coordinate login/logout between Privy and Terminal.
+Each example includes an env template:
 
-```
-examples/privy/
-├── src/components/providers.tsx        # Privy + Terminal provider composition
-├── src/components/terminal-section.tsx # EIP-1193 provider extraction from Privy
-└── src/app/page.tsx                    # Login/logout flow
-```
+- Vite examples: `.env.example -> .env`
+- Next.js examples: `.env.local.example -> .env.local`
+- Expo example: `.env.example -> .env`
 
-### RainbowKit (Vite)
+Common values:
 
-A minimal Vite + React SPA demonstrating the simplest possible integration. Good starting point if you're not using Next.js.
+- WalletConnect project id
+- Privy app/client ids (Privy and Expo examples)
+- Terminal client id
 
-```
-examples/rainbowkit/
-├── src/main.tsx    # Provider setup
-├── src/App.tsx     # Widget rendering with type-safe provider check
-└── src/wagmi.ts    # Chain configuration
-```
+## Notes
 
-### RainbowKit Redirect
-
-Demonstrates the redirect authentication flow as an alternative to popups. Uses `useTerminal()` to programmatically call `connect()` with `{ mode: "redirect" }`, display the connected address, and fetch user stats (rank and points).
-
-```
-examples/rainbowkit-redirect/
-├── src/main.tsx    # Provider setup
-├── src/App.tsx     # Custom UI with connect/disconnect, state handling, stats
-└── src/wagmi.ts    # Chain configuration
-```
+- Web examples default to popup flow unless you call `connect(..., { mode: "redirect" })`.
+- Expo example uses redirect flow through deep-link callback and requires a development build (`expo run:ios` / `expo run:android`).

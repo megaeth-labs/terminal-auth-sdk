@@ -1,71 +1,92 @@
 # Authentication Types
 
-The SDK supports two authentication flows for the consent step: **popup** and **redirect**. This page explains the differences and when to use each.
+The SDK supports two consent flows: **popup** and **redirect**.
 
-## Popup (current default)
+Both use the same SIWE + PKCE backend flow. The only difference is how the user completes consent.
 
-The popup flow opens a small browser window for the user to approve linking their wallet to their Terminal profile. The parent app stays open in the background and receives the authorization code via `postMessage` when the user approves.
+## Popup
 
-This is the current standard implementation and works well for most desktop web applications.
+Popup opens Terminal consent in a separate window while your app stays on the current page.
 
 ### How it works
 
-1. The SDK opens a 500x600px popup window pointing to the Terminal consent page.
-2. The user approves the wallet link in the popup.
-3. The popup sends the authorization code back to the parent window via `postMessage` and closes itself.
-4. The parent app continues without ever leaving the page.
+1. SDK opens consent window.
+2. User approves wallet link.
+3. Popup posts the auth code to the opener and closes.
+4. SDK exchanges the code for a token.
 
-### Advantages
+### Best for
 
-- The app stays in memory — no page reload, no lost state.
-- Works well for apps that maintain complex client-side state (game engines, media players, real-time connections).
-- Faster perceived flow since the main app never navigates away.
+- Desktop web apps with rich in-memory UI (games, media editors, dashboards)
+- Flows where you want to avoid full-page navigation
 
-## Redirect (coming soon)
+## Redirect
 
-The redirect flow navigates the user away from your app to the Terminal consent page, then redirects them back with the authorization code in the URL. This is the standard OAuth approach and is required in environments where popups are blocked.
+Redirect navigates the user to Terminal consent and returns to your callback URL (web) or deep link (native).
 
-> **Status**: The redirect flow is a work in progress and will be available in a future release.
+### How it works
 
-### How it will work
+1. SDK prepares PKCE + state and requests `authorizeUrl`.
+2. App navigates to Terminal consent page.
+3. User approves wallet link.
+4. Terminal redirects back with `code` + `state`.
+5. SDK validates state and exchanges code for token.
 
-1. The SDK redirects the browser to the Terminal consent page.
-2. The user approves the wallet link.
-3. Terminal redirects back to your app's callback URL with the authorization code.
-4. The SDK picks up the code from the URL and completes the token exchange.
+### Best for
 
-### Advantages
+- Mobile web / PWA contexts where popups are unreliable
+- Embedded/iframe contexts with popup restrictions
+- React Native / Expo apps (deep-link callback)
 
-- Works in environments where popups are blocked (mobile browsers, PWAs, iframes).
-- More predictable behavior across all platforms.
-- Required for native mobile apps using a system browser with custom URL schemes.
+## Which one should I use?
 
-## Best flow by use case
+| Use case | Recommended flow | Why |
+| --- | --- | --- |
+| Desktop web app | Popup (default) | Keeps app state in memory; no page navigation |
+| Mobile browser / PWA | Redirect | Popup support is inconsistent |
+| Embedded iframe | Redirect | Popup is commonly blocked |
+| React Native / Expo | Redirect | Native auth session + deep-link callback |
 
-| Use case                        | Recommended flow              | Why                                                                                                                                                                                                                 |
-| ------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Games, real-time apps           | Popup                         | Games maintain WebGL contexts, audio, and game state in memory. A full page redirect would destroy all of this and force a reload — potentially losing unsaved progress or disconnecting from multiplayer sessions. |
-| Media apps (streaming, editors) | Popup                         | Active media streams, audio playback, and canvas state don't survive navigation.                                                                                                                                    |
-| Desktop web (general)           | Popup (default)               | Better UX when the browser supports it. The app stays responsive throughout.                                                                                                                                        |
-| Mobile web browsers             | Redirect                      | Popups are blocked or unreliable. Redirect is the only reliable option.                                                                                                                                             |
-| PWAs (installed)                | Redirect                      | Popup behavior is inconsistent in standalone mode. Redirect is more predictable.                                                                                                                                    |
-| Embedded / iframe contexts      | Redirect                      | Popups from iframes are almost always blocked by browsers.                                                                                                                                                          |
-| Native mobile apps              | Redirect (via system browser) | Uses the same redirect infrastructure with a custom URL scheme. The OS routes the callback back to the app.                                                                                                         |
+## Code examples
 
-## Current status
+### Popup (web default)
 
-| Flow     | Status      | Availability  |
-| -------- | ----------- | ------------- |
-| Popup    | Stable      | Available now |
-| Redirect | In progress | Coming soon   |
+```ts
+await connect(provider);
+```
 
-Until the redirect flow is released, the popup flow is used for all `connect()` calls. If you are building for mobile or an environment where popups are blocked, the redirect flow will be required. Check back for updates.
+### Redirect (web)
 
-## Mobile support
+```ts
+await connect(provider, { mode: "redirect" });
+```
 
-Native mobile SDKs are planned and will ship after the redirect flow is available:
+### Redirect with explicit callback URL (web)
 
-- **React Native** — a wrapper package for React Native apps
-- **Swift** — a native iOS SDK
+```ts
+await connect(provider, {
+  mode: "redirect",
+  redirectUri: "https://your-app.com/auth/terminal-callback",
+});
+```
 
-Both will use the redirect flow with custom URL schemes to handle the OAuth callback. Until these are released, mobile apps can use the web SDK inside a WebView with the redirect flow.
+### Redirect with UI route state (web)
+
+```ts
+await connect(provider, {
+  mode: "redirect",
+  redirectUri: "https://your-app.com/auth/terminal-callback?tab=stats",
+});
+```
+
+The callback URL does not need to run special logic. It is just where the user lands after consent.
+
+Make sure the same `redirectUri` (including path/query if used) is allowlisted for your `clientId`. Fragment (`#...`) values are not accepted by backend redirect URI validation.
+
+### Redirect (Expo)
+
+Use `@megaeth-labs/terminal-auth-sdk/react-native` and configure your app scheme/deep link.
+
+## Release channel note
+
+Feature availability depends on the version/channel you install (`latest` vs `@beta`). If you need newest redirect/mobile updates before stable promotion, install `@beta`.

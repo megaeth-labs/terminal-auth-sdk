@@ -1,166 +1,129 @@
 # TerminalClient
 
-`TerminalClient` is the core class that drives the authentication flow. It is framework-agnostic and can be used directly or through the React bindings.
+`TerminalClient` is the framework-agnostic auth client.
 
-**Import**
+## Import
 
-```typescript
+```ts
 import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk/core";
-// or from the full package:
+// or
 import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk";
 ```
 
 ## Constructor
 
-```typescript
+```ts
 new TerminalClient(config: TerminalSDKConfig)
 ```
 
-| Parameter | Type                | Description                                                               |
-| --------- | ------------------- | ------------------------------------------------------------------------- |
-| `config`  | `TerminalSDKConfig` | SDK configuration. Only `clientId` is required (provided by the MegaETH team). See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
-
-**Example**
-
-```typescript
-const client = new TerminalClient({ clientId: "your-client-id" });
-```
-
----
+`clientId` is required. `baseUrl`, `terminalOrigin`, and `adapter` are optional.
 
 ## Methods
 
 ### `connect`
 
-```typescript
-connect(provider: EIP1193Provider): Promise<ConnectResult>
+```ts
+connect(
+  provider: EIP1193Provider,
+  options?: ConnectOptions,
+): Promise<ConnectResult>
 ```
 
-Runs the full authentication flow:
+Runs the auth flow and resolves with `{ accessToken, expiresIn, profileId }`.
 
-1. Requests the wallet address from the provider
-2. Requests a nonce from the Terminal API
-3. Generates a PKCE pair
-4. Signs the SIWE message
-5. Verifies the signature
-6. Opens the consent popup if the wallet is not yet linked
-7. Exchanges the authorization code for an access token
+`ConnectOptions`:
 
-Sets the connection state to `"connecting"` at the start and `"connected"` on success. On failure, resets to `"disconnected"` and emits an `error` event.
+- `mode?: "popup" | "redirect"`
+- `redirectUri?: string` (used for redirect mode; this is the return URL after consent and can include your own query UI state if allowlisted)
 
-**Throws** if any step in the flow fails (network error, user rejection, popup closed, etc).
+If `mode` is omitted, SDK uses the first mode supported by the active adapter.
 
----
+### `handleRedirectCallback`
+
+```ts
+handleRedirectCallback(): Promise<ConnectResult | null>
+```
+
+Consumes an inbound redirect callback (when present) and completes token exchange.
+
+- Web navigate-away redirect flow: used on return page load
+- Expo in-process redirect flow: typically returns `null` (callback is handled inside connect)
+
+On web, this can run on your normal app route bootstrap; you do not need a dedicated callback page with custom business logic.
 
 ### `disconnect`
 
-```typescript
+```ts
 disconnect(): Promise<void>
 ```
 
-Clears the access token and stored session, unsubscribes from wallet account change events, and sets the connection state to `"disconnected"`.
-
-**Throws** `Error("Not connected")` if called when there is no active session.
-
----
+Clears active session and transitions to `"disconnected"`.
 
 ### `getStats`
 
-```typescript
+```ts
 getStats(): Promise<Stats>
 ```
 
-Fetches the connected user's season statistics.
-
-**Throws** `Error("Not connected")` if called before a successful `connect`.
-
-**Returns** a [`Stats`](./types.md#stats) object.
-
----
+Fetches current user's Terminal stats. Requires active, non-expired session.
 
 ### `getConnectionState`
 
-```typescript
+```ts
 getConnectionState(): ConnectionState
 ```
 
-Returns the current connection state synchronously. Useful for checking state without subscribing to events.
-
-**Returns** `"connected"` | `"connecting"` | `"disconnected"`.
-
----
+Returns `"connected" | "connecting" | "disconnected"`.
 
 ### `getConnectedAddress`
 
-```typescript
+```ts
 getConnectedAddress(): string | null
 ```
 
-Returns the currently connected wallet address, or `null` if not connected.
-
----
+Returns connected wallet address, or `null`.
 
 ### `getProfileId`
 
-```typescript
+```ts
 getProfileId(): string | null
 ```
 
-Returns the connected user's Terminal profile ID, or `null` if not connected.
-
----
+Returns connected Terminal profile id, or `null`.
 
 ### `restoreSession`
 
-```typescript
-restoreSession(): boolean
+```ts
+restoreSession(provider?: EIP1193Provider): Promise<boolean>
 ```
 
-Attempts to restore a previously saved session from `localStorage`. Returns `true` if a valid (non-expired) session was restored, `false` otherwise. If the session is expired or malformed, it is cleared automatically.
+Restores a valid stored session. If `provider` is provided, SDK also validates the currently selected wallet still matches the stored session wallet.
 
-This is called automatically by `TerminalProvider` on mount. When using `TerminalClient` directly, call this after creating the client to resume an existing session without requiring the user to re-authenticate.
+### `on` / `off`
 
----
+```ts
+on(event: "stateChange", cb: (state: ConnectionState) => void): void
+on(event: "error", cb: (error: Error) => void): void
 
-### `on`
-
-```typescript
-on(event: "stateChange", callback: (state: ConnectionState) => void): void
-on(event: "error", callback: (error: Error) => void): void
+off(event: "stateChange", cb: (state: ConnectionState) => void): void
+off(event: "error", cb: (error: Error) => void): void
 ```
 
-Subscribes to a client event.
-
-| Event         | Payload           | Description                                             |
-| ------------- | ----------------- | ------------------------------------------------------- |
-| `stateChange` | `ConnectionState` | Fired whenever the connection state changes.            |
-| `error`       | `Error`           | Fired when `connect` encounters an unrecoverable error. |
-
----
-
-### `off`
-
-```typescript
-off(event: "stateChange", callback: (state: ConnectionState) => void): void
-off(event: "error", callback: (error: Error) => void): void
-```
-
-Removes a previously registered listener. The `callback` reference must match the one passed to `on`.
-
----
+Subscribes/unsubscribes client events.
 
 ### `openTerminalProfile`
 
-```typescript
+```ts
 openTerminalProfile(): void
 ```
 
-Opens the user's Terminal profile page in a new browser tab. Does not require an active connection. No-ops in non-browser environments (SSR).
+Opens Terminal dashboard/profile URL through the active platform adapter.
 
----
+## Session behavior
 
-## Session persistence
+Sessions are stored under keys derived from `clientId` through the active adapter's persistent storage backend.
 
-`TerminalClient` automatically persists sessions to `localStorage` under the key `terminal_session_<clientId>`. Sessions are saved on successful `connect()` and cleared on `disconnect()` or when the user switches wallet accounts.
+- Web default adapter: `localStorage`
+- Expo adapter: `expo-secure-store`
 
-To restore a saved session, call `restoreSession()` after creating the client. `TerminalProvider` does this automatically on mount.
+Ephemeral redirect state uses adapter ephemeral storage (web `sessionStorage`, Expo in-memory by default).
