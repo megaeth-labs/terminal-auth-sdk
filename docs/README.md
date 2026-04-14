@@ -1,31 +1,37 @@
 # Terminal Auth SDK
 
-`@megaeth-labs/terminal-auth-sdk` is a TypeScript SDK for linking Web3 wallets to MegaETH Terminal user profiles. It handles the full authentication flow: wallet signature challenge, PKCE, consent popup, and token exchange.
+`@megaeth-labs/terminal-auth-sdk` links EIP-1193 wallets to MegaETH Terminal profiles.
+
+The SDK handles wallet signature challenge, PKCE, consent (popup or redirect), and token exchange.
 
 **[Live demo](https://auth-sdk-demo-seven.vercel.app/)**
 
-> **Beta**: This library is in beta. The API may change between releases. The current authentication uses a popup-based consent flow. A redirect-based flow for mobile browsers, PWAs, and embedded contexts is coming soon. See [Authentication Types](guides/authentication-types.md) for details.
+## Release channels
+
+- `latest`: stable channel
+- `beta`: newest updates before stable promotion
+
+If you specifically need the newest redirect/mobile updates and your stable version does not have them yet, install `@beta`.
 
 ## What it does
 
 When a user connects, the SDK:
 
-1. Requests their wallet address via an EIP-1193 provider
-2. Requests a SIWE message from the Terminal API for the wallet to sign
-3. Runs a PKCE-secured authorization flow
-4. Opens a consent popup for first-time wallet linking
-5. Exchanges the authorization code for an access token
+1. Requests wallet access via EIP-1193
+2. Requests a SIWE challenge from Terminal API
+3. Generates PKCE verifier/challenge
+4. Verifies signature
+5. Completes consent via popup or redirect
+6. Exchanges auth code for access token
 
-The resulting access token can be used to read the user's Terminal profile and stats.
+## Platform support
 
-## What's included
-
-- Framework-agnostic core (`TerminalClient`) — works with any EIP-1193 provider
-- React bindings — `TerminalProvider`, `useTerminal` hook, and `TerminalWidget` drop-in component
-- Full TypeScript types
+- **Web**: popup (default) and redirect
+- **React Native / Expo**: redirect via app deep link (`@megaeth-labs/terminal-auth-sdk/react-native`)
 
 ## Where to start
 
-- [Installation](getting-started/installation.md) — set up your environment and install the package
-- [Quick Start](getting-started/quick-start.md) — connect a wallet in a few lines of code
-- [Authentication Flow](guides/authentication-flow.md) — understand how the auth flow works end to end
+- [Installation](getting-started/installation.md)
+- [Quick Start](getting-started/quick-start.md)
+- [Authentication Types](guides/authentication-types.md)
+- [Authentication Flow](guides/authentication-flow.md)

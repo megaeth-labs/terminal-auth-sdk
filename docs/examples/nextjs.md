@@ -114,6 +114,6 @@ All React exports from the SDK (`TerminalProvider`, `TerminalWidget`, `useTermin
 2. The user connects their wallet with RainbowKit.
 3. `isConnected` becomes `true`, which renders the Terminal connect button.
 4. The user clicks the button. `handleTerminalConnect` resolves an EIP-1193 provider from `connector.getProvider()` and calls `connect(provider)`.
-5. The SDK runs the full auth flow. If the wallet is not linked to a Terminal profile, a consent popup opens.
+5. The SDK runs the full auth flow. By default on web, first-time linking opens a consent popup (or use redirect mode by calling `connect(provider, { mode: "redirect" })`).
 6. The `state` value updates from `"connecting"` to `"connected"` on success. The button becomes disabled with the label "Connected to Terminal".
 7. The session is saved to `localStorage` so it persists across page reloads.

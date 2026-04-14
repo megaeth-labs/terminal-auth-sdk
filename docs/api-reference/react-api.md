@@ -2,15 +2,15 @@
 
 ## TerminalProvider
 
-Provides a `TerminalClient` instance and connection state to all descendant components via React context.
+Provides Terminal context to descendants.
 
-**Import**
+### Import (web)
 
-```typescript
+```ts
 import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";
 ```
 
-**Usage**
+### Usage
 
 ```tsx
 <TerminalProvider config={{ clientId: "your-client-id" }}>
@@ -20,141 +20,61 @@ import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";
 
 ### Props
 
-| Prop       | Type                | Required | Description                                                               |
-| ---------- | ------------------- | -------- | ------------------------------------------------------------------------- |
-| `config`   | `TerminalSDKConfig` | Yes      | SDK configuration. Only `clientId` is required (provided by the MegaETH team). See [TerminalSDKConfig](./types.md#terminalsdkconfig). |
-| `children` | `ReactNode`         | Yes      | Component tree that will have access to the context.                      |
+| Prop | Type | Required | Description |
+| --- | --- | --- | --- |
+| `config` | `TerminalSDKConfig` | Yes | SDK configuration |
+| `children` | `ReactNode` | Yes | Child tree |
 
-The provider creates one `TerminalClient` on mount and keeps it stable for the lifetime of the component. It automatically calls `restoreSession()` to resume any previously saved session. State changes from the client are synced to React state automatically.
+The web provider creates one `TerminalClient`, subscribes to state events, handles redirect callback when present, and restores session when no callback is pending.
 
----
+For Expo/React Native, use `TerminalProvider` from `@megaeth-labs/terminal-auth-sdk/react-native`.
 
 ## useTerminal
 
-Returns the current Terminal connection state and all available actions. Must be used inside a `TerminalProvider`.
+Returns connection state and actions. Must be used within a provider.
 
-**Import**
+### Import
 
-```typescript
+```ts
 import { useTerminal } from "@megaeth-labs/terminal-auth-sdk";
-```
-
-**Usage**
-
-```typescript
-const {
-  state,
-  address,
-  connect,
-  disconnect,
-  getStats,
-  openTerminalProfile,
-  client,
-} = useTerminal();
 ```
 
 ### Return value
 
-| Property              | Type                                                    | Description                                                                                                          |
-| --------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `state`               | `ConnectionState`                                       | Current connection state: `"connected"`, `"connecting"`, or `"disconnected"`. Reactive — updates trigger re-renders. |
-| `address`             | `string \| null`                                        | Connected wallet address. `null` when disconnected. Reactive.                                                        |
-| `connect`             | `(provider: EIP1193Provider) => Promise<ConnectResult>` | Runs the full auth flow with the given provider.                                                                     |
-| `disconnect`          | `() => Promise<void>`                                   | Clears the session and stored session data. Throws if not connected.                                                 |
-| `getStats`            | `() => Promise<Stats>`                                  | Fetches the user's season stats. Throws if not connected.                                                            |
-| `openTerminalProfile` | `() => void`                                            | Opens the user's Terminal profile page in a new tab.                                                                 |
-| `client`              | `TerminalClient`                                        | The underlying `TerminalClient` instance. Use for advanced scenarios such as custom event subscriptions.             |
-
-Throws an error if called outside of a `TerminalProvider`.
-
----
+| Property | Type | Description |
+| --- | --- | --- |
+| `state` | `ConnectionState` | Current auth state |
+| `address` | `string \| null` | Connected wallet address |
+| `connect` | `(provider: EIP1193Provider, options?: ConnectOptions) => Promise<ConnectResult>` | Start auth flow |
+| `disconnect` | `() => Promise<void>` | Clear session |
+| `getStats` | `() => Promise<Stats>` | Fetch stats |
+| `openTerminalProfile` | `() => void` | Open Terminal profile/dashboard |
+| `client` | `TerminalClient` | Underlying client |
 
 ## TerminalWidget
 
-A pre-styled button and connected-state card that handles the full connect flow. Renders as a button when disconnected and as a profile display when connected.
+Prebuilt web UI component for connect/connected states.
 
-**Import**
+### Import
 
-```typescript
+```ts
 import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 ```
 
-**Usage**
+### Usage
 
 ```tsx
-<TerminalWidget
-  provider={window.ethereum}
-  onError={(err) => console.error(err)}
-  theme="dark"
-/>
+<TerminalWidget provider={window.ethereum} onError={console.error} theme="dark" />
 ```
 
 ### Props
 
-| Prop         | Type                                                | Required | Default  | Description                                                                      |
-| ------------ | --------------------------------------------------- | -------- | -------- | -------------------------------------------------------------------------------- |
-| `provider`   | `EIP1193Provider`                                   | No       | —        | The EIP-1193 wallet provider. The button is disabled until a provider is passed. |
-| `onError`    | `(error: Error) => void`                            | No       | —        | Called when `connect` or the profile fetch fails.                                |
-| `theme`      | `TerminalWidgetTheme`                               | No       | `"dark"` | Visual theme. `"dark"`, `"light"`, or `"accent"`. See [TerminalWidgetTheme](./types.md#terminalwidgettheme). |
-| `classNames` | `Partial<Record<TerminalWidgetSlot, string>>`       | No       | —        | CSS class overrides per slot. See [Customization](#customization) and [TerminalWidgetSlot](./types.md#terminalwidgetslot). |
-| `styles`     | `Partial<Record<TerminalWidgetSlot, CSSProperties>>` | No       | —        | Inline style overrides per slot. See [Customization](#customization) and [TerminalWidgetSlot](./types.md#terminalwidgetslot). |
+| Prop | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `provider` | `EIP1193Provider` | No | — | Wallet provider |
+| `onError` | `(error: Error) => void` | No | — | Error callback |
+| `theme` | `TerminalWidgetTheme` | No | `"dark"` | Built-in theme |
+| `classNames` | `Partial<Record<TerminalWidgetSlot, string>>` | No | — | Slot class overrides |
+| `styles` | `Partial<Record<TerminalWidgetSlot, CSSProperties>>` | No | — | Slot style overrides |
 
-### Themes
-
-| Theme    | Background | Text      | Points    | Border              |
-| -------- | ---------- | --------- | --------- | ------------------- |
-| `dark`   | `#19191a`  | white     | `#26de96` | `0.5px solid #313131` |
-| `light`  | `#ece8e8`  | `#19191a` | `#ff4bc9` | `0.5px solid #bebebe` |
-| `accent` | `#26de96`  | `#19191a` | white     | none                |
-
-### Customization
-
-The widget exposes named **slots** that map to its internal elements. Use `classNames` to apply CSS classes or `styles` to apply inline style overrides to any slot.
-
-```tsx
-<TerminalWidget
-  provider={provider}
-  theme="dark"
-  classNames={{
-    root: "rounded-xl shadow-lg",
-    points: "text-pink-500 font-black",
-    address: "font-mono",
-  }}
-  styles={{
-    divider: { display: "none" },
-    points: { fontSize: 32 },
-  }}
-/>
-```
-
-User-provided styles are applied after the built-in styles, so they always take precedence. The `root` slot targets the outer element (the `<div>` container when connected or the `<button>` when disconnected), so a separate top-level `className` or `style` prop is not needed.
-
-For the `logo` and `arrow` slots, the `color` style property is forwarded to the SVG fill/stroke.
-
-**Available slots**
-
-| Slot        | Element                                         |
-| ----------- | ----------------------------------------------- |
-| `root`      | Outer container (connected) or button (disconnected) |
-| `logo`      | Terminal logo SVG                               |
-| `info`      | Address + rank wrapper div                      |
-| `address`   | Address text span                               |
-| `rank`      | Rank text span                                  |
-| `divider`   | Vertical divider                                |
-| `points`    | Points text span                                |
-| `label`     | Button label text (disconnected state only)     |
-| `arrow`     | Arrow icon (disconnected state only)            |
-
-See [TerminalWidgetSlot](./types.md#terminalwidgetslot) for the type definition.
-
-If you need fully custom rendering beyond slot overrides, use the `useTerminal` hook directly and build your own UI.
-
-### Behavior
-
-**Disconnected state** — renders a button with the Terminal logo, the label "Connect To Terminal", and an arrow icon. The button is disabled when `provider` is `undefined` or `state === "connecting"`.
-
-**Connected state** — renders a display card with the Terminal logo, the truncated wallet address (first 6 + last 4 characters), the user's rank, a vertical divider, and their points.
-
-After a successful connect, the widget calls `getStats` automatically. If `getStats` fails, the `onError` callback is invoked and the rank/points are not displayed.
-
-The widget must be used inside a `TerminalProvider`.
+Available slots: `root`, `logo`, `info`, `address`, `rank`, `divider`, `points`, `label`, `arrow`.

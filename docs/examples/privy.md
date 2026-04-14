@@ -161,7 +161,7 @@ cp examples/privy/.env.local.example examples/privy/.env.local
 2. The user logs in via Privy (email, social, or external wallet). Privy creates an embedded Ethereum wallet if the user doesn't have one.
 3. The app resolves the EIP-1193 provider from `wallets[0].getEthereumProvider()` and passes it to `TerminalWidget`.
 4. The user clicks "Connect To Terminal" in the widget.
-5. The SDK runs the full auth flow. If the wallet is not yet linked to a Terminal profile, a consent popup opens.
+5. The SDK runs the full auth flow. By default on web, first-time linking opens a consent popup (or use redirect mode in custom flows via `connect(provider, { mode: "redirect" })`).
 6. On success, the widget switches to its connected state, showing the address, rank, and points. The session is persisted in `localStorage`.
 7. On logout, the app disconnects from Terminal before calling Privy's `logout()` to clean up both sessions.
 

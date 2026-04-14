@@ -1,29 +1,47 @@
-This is a [RainbowKit](https://rainbowkit.com) + [wagmi](https://wagmi.sh) + [Next.js](https://nextjs.org/) project bootstrapped with [`create-rainbowkit`](https://github.com/rainbow-me/rainbowkit/tree/main/packages/create-rainbowkit).
+# Terminal SDK + Next.js (RainbowKit) Example
 
-## Getting Started
+A Next.js Pages Router example that integrates `@megaeth-labs/terminal-auth-sdk` with Wagmi + RainbowKit.
 
-First, run the development server:
+## What this example covers
+
+- Provider composition in `_app.tsx` (Wagmi -> QueryClient -> RainbowKit -> TerminalProvider)
+- Manual Terminal connect button using `useTerminal()`
+- EIP-1193 provider extraction from Wagmi connector
+- Session persistence + restore behavior
+
+## Setup
+
+From repo root:
 
 ```bash
-npm run dev
+cp examples/nextjs/.env.local.example examples/nextjs/.env.local
+pnpm install
+pnpm --filter nextjs run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>.
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+## Required env vars
 
-## Learn More
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
+- `NEXT_PUBLIC_TERMINAL_CLIENT_ID` (optional, defaults to `1` in this example)
 
-To learn more about this stack, take a look at the following resources:
+Optional overrides:
 
-- [RainbowKit Documentation](https://rainbowkit.com) - Learn how to customize your wallet connection flow.
-- [wagmi Documentation](https://wagmi.sh) - Learn how to interact with Ethereum.
-- [Next.js Documentation](https://nextjs.org/docs) - Learn how to build a Next.js application.
+- `NEXT_PUBLIC_TERMINAL_API_URL`
+- `NEXT_PUBLIC_TERMINAL_ORIGIN`
 
-You can check out [the RainbowKit GitHub repository](https://github.com/rainbow-me/rainbowkit) - your feedback and contributions are welcome!
+## Auth mode
 
-## Deploy on Vercel
+This example uses the web default flow (popup). To test redirect mode, call:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```ts
+await connect(provider, { mode: "redirect" });
+```
 
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+in `src/pages/index.tsx`.
+
+## Related docs
+
+- [Docs example walkthrough](../../docs/examples/nextjs.md)
+- [Authentication types](../../docs/guides/authentication-types.md)

@@ -1,10 +1,8 @@
 # Quick Start
 
-## React
+## Web React
 
 ### 1. Wrap your app with `TerminalProvider`
-
-Add `TerminalProvider` near the root of your component tree. Pass your `clientId` in the config. Client IDs are provided by the MegaETH team to partner applications.
 
 ```tsx
 import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk";
@@ -18,19 +16,17 @@ function App({ children }) {
 }
 ```
 
-### 2. Use the `useTerminal` hook
-
-Call `connect` with any EIP-1193 provider (e.g. `window.ethereum` or a provider resolved from a Wagmi connector via `await connector.getProvider()`).
+### 2. Call `connect` from `useTerminal`
 
 ```tsx
 import { useTerminal } from "@megaeth-labs/terminal-auth-sdk";
 
-function ConnectButton() {
+function ConnectButton({ provider }) {
   const { state, connect, disconnect } = useTerminal();
 
   const handleConnect = async () => {
-    await connect(window.ethereum);
-    console.log("Connected to Terminal");
+    // Popup is default on web. Pass mode: "redirect" when needed.
+    await connect(provider, { mode: "redirect" });
   };
 
   if (state === "connected") {
@@ -45,44 +41,40 @@ function ConnectButton() {
 }
 ```
 
-### 3. Drop in the pre-built widget (optional)
+`redirectUri` does not need a dedicated callback page with custom logic. It is simply the URL the user returns to after consent. You can use a normal route that already drives UI state (for example with query params), as long as it is allowlisted exactly for your `clientId`. When you use `TerminalProvider` on web, redirect callback handling is automatic on app load.
 
-`TerminalWidget` handles the connect/connected states for you.
+## Framework-agnostic core
 
-```tsx
-import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
-
-function MyPage() {
-  return (
-    <TerminalWidget
-      provider={window.ethereum}
-      onError={(err) => console.error(err)}
-    />
-  );
-}
-```
-
----
-
-## Framework-agnostic (no React)
-
-```typescript
+```ts
 import { TerminalClient } from "@megaeth-labs/terminal-auth-sdk/core";
 
 const client = new TerminalClient({ clientId: "your-client-id" });
-
-await client.connect(window.ethereum);
-console.log("Connected to Terminal");
-
+await client.connect(provider, { mode: "redirect" });
 const stats = await client.getStats();
 console.log(stats.rank, stats.totalPoints);
 ```
 
----
+## React Native / Expo
+
+Use the React Native entrypoint:
+
+```tsx
+import { TerminalProvider } from "@megaeth-labs/terminal-auth-sdk/react-native";
+
+function Root() {
+  return (
+    <TerminalProvider config={{ clientId: "your-client-id" }}>
+      {children}
+    </TerminalProvider>
+  );
+}
+```
+
+Expo flow uses redirect mode with deep links. For a full setup (app scheme, env vars, dev build requirements), see [`examples/expo-rn/README.md`](../../examples/expo-rn/README.md).
 
 ## Next steps
 
-- [Authentication Flow](../guides/authentication-flow.md) — understand what happens under the hood
-- [React Integration](../guides/react-integration.md) — detailed guide to all React APIs
-- [RainbowKit Example](../examples/rainbowkit.md) — full working example with Wagmi + RainbowKit
-- [Privy Example](../examples/privy.md) — full working example with Privy embedded wallets
+- [Authentication Types](../guides/authentication-types.md)
+- [Authentication Flow](../guides/authentication-flow.md)
+- [React Integration](../guides/react-integration.md)
+- [Examples](../../examples/README.md)

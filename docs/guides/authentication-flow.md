@@ -1,6 +1,6 @@
 # Authentication Flow
 
-The SDK uses an OAuth-style flow secured by wallet signatures (SIWE / EIP-4361) and PKCE. This page explains each step so you understand what happens when `connect()` is called.
+The SDK uses SIWE-style wallet signatures + PKCE to complete an OAuth-style auth flow.
 
 ## Overview
 
@@ -10,92 +10,95 @@ sequenceDiagram
     participant SDK
     participant Wallet
     participant API as Terminal API
-    participant Popup as Consent Popup
+    participant Consent as Terminal Consent
 
-    App->>SDK: connect(provider)
+    App->>SDK: connect(provider, options?)
     SDK->>Wallet: eth_requestAccounts
     Wallet-->>SDK: wallet address
 
     SDK->>API: POST /api/v1/auth/nonce
     API-->>SDK: challengeId + SIWE message
 
-    SDK->>SDK: generate PKCE pair (codeVerifier + codeChallenge)
-
-    SDK->>Wallet: personal_sign
+    SDK->>SDK: generate PKCE pair
+    SDK->>Wallet: personal_sign(message)
     Wallet-->>SDK: signature
 
     SDK->>API: POST /api/v1/auth/verify-signature
-    API-->>SDK: status + code or authorizeUrl
+    API-->>SDK: {status, code? , authorizeUrl?}
 
-    alt Wallet already linked
-        SDK->>SDK: use code directly
-    else First-time linking
-        SDK->>Popup: open consent window
-        Popup-->>SDK: postMessage({ code })
+    alt already linked
+      SDK->>API: POST /api/v1/auth/token
+    else consent required (popup)
+      SDK->>Consent: open popup
+      Consent-->>SDK: postMessage(code)
+      SDK->>API: POST /api/v1/auth/token
+    else consent required (redirect)
+      SDK->>Consent: navigate/open auth session
+      Consent-->>SDK: callback with code+state
+      SDK->>API: POST /api/v1/auth/token
     end
 
-    SDK->>API: POST /api/v1/auth/token
     API-->>SDK: accessToken
-
     SDK-->>App: ConnectResult { accessToken, expiresIn, profileId }
 ```
 
 ## Step-by-step
 
-### 1. Request wallet address
+### 1. Wallet address
 
-The SDK calls `eth_requestAccounts` on the EIP-1193 provider. The wallet prompts the user to select an account. The returned address is used for all subsequent requests.
+The SDK requests wallet accounts through EIP-1193 (`eth_requestAccounts`).
 
-### 2. Request a nonce
+### 2. Nonce + SIWE message
 
-The SDK sends a `POST` to `/api/v1/auth/nonce` with the wallet address and `clientId`. The API returns:
+The SDK calls `/api/v1/auth/nonce` with `{ wallet, clientId }`.
 
-- `challengeId` — a unique ID for this auth attempt
-- `message` — a [SIWE (EIP-4361)](https://eips.ethereum.org/EIPS/eip-4361) message string for the wallet to sign
+### 3. PKCE generation
 
-### 3. Generate a PKCE pair
+A random `codeVerifier` and `codeChallenge` are generated.
 
-The SDK generates a cryptographically random `codeVerifier` (128 characters) and its SHA-256 base64url-encoded `codeChallenge`. This is the standard [PKCE](https://datatracker.ietf.org/doc/html/rfc7636) mechanism — the `codeChallenge` is sent to the server now, and the `codeVerifier` is only revealed when exchanging the code for a token. This prevents authorization code interception attacks.
+### 4. Signature
 
-### 4. Sign the challenge
+The wallet signs the SIWE message (`personal_sign`).
 
-The SDK calls `personal_sign` on the provider with the SIWE message. The wallet shows the user a human-readable signing prompt. The resulting signature proves ownership of the wallet address.
+### 5. Signature verification
 
-### 5. Verify the signature
+The SDK posts signature + PKCE challenge to `/api/v1/auth/verify-signature`.
 
-The SDK sends the `challengeId`, `signature`, and `codeChallenge` to `/api/v1/auth/verify-signature`. The API verifies the signature on-chain and returns one of two responses:
+Possible responses:
 
-- **`status: "linked"` with a `code`** — the wallet is already linked to a Terminal profile. The auth code is returned directly.
-- **`authorizeUrl`** — the wallet is not yet linked. A consent URL is returned.
+- `status: "linked"` + `code`: wallet already linked; no consent step needed.
+- `authorizeUrl`: consent is required.
 
-### 6. Consent popup (first-time only)
+### 6. Consent step (popup or redirect)
 
-If the wallet is not linked, the SDK opens the `authorizeUrl` in a 500×600px popup window. The popup is hosted by Terminal and walks the user through linking their Terminal account. When the user approves, the popup sends a `postMessage` back to the opener with `{ code }` and closes itself.
-
-The SDK listens for this message and validates that it came from the expected Terminal origin. If the user closes the popup manually, the flow times out after 2 minutes and throws an error.
+- **Popup (web default):** opens consent in a popup and waits for `postMessage` callback.
+- **Redirect (web):** stores PKCE/state in ephemeral storage, navigates away, then resumes on callback via `handleRedirectCallback()`. The callback route itself does not need custom logic beyond normal app bootstrap. On callback, SDK removes OAuth params (`code`, `state`) from the URL.
+- **Redirect (Expo):** opens auth session (`expo-web-browser`) and receives callback URL in-process.
 
 ### 7. Token exchange
 
-The SDK sends the `code` and `codeVerifier` to `/api/v1/auth/token`. The API verifies that the `codeVerifier` hashes to the `codeChallenge` sent in step 5, then returns an `accessToken`. The SDK decodes the `profileId` from the token payload and includes it in the `ConnectResult`.
+The SDK exchanges `{ code, codeVerifier, clientId }` at `/api/v1/auth/token`.
 
 ### 8. Session persistence
 
-After a successful connect, the SDK saves the session (access token, profile ID, expiry, and wallet address) to `localStorage`. On subsequent page loads, `restoreSession()` can restore this session without re-running the auth flow. The stored session is cleared on `disconnect()`, token expiry, or wallet account change.
+On success, SDK stores session data (access token, profile ID, expiry, wallet address) through the active platform adapter:
 
-### 9. Account change detection
+- Web default adapter: `localStorage`
+- Expo adapter: `expo-secure-store` (unless an explicit custom storage backend is provided)
 
-After a successful connect, the SDK subscribes to the `accountsChanged` event on the provider. If the user switches wallets, the SDK automatically disconnects and emits a `stateChange: disconnected` event.
+### 9. Session restoration
 
-## Error handling
+`restoreSession(provider?)` restores a valid stored session and can optionally validate wallet identity against `eth_accounts` when a provider is passed.
 
-If any step fails, the SDK:
+### 10. Account change handling
 
-1. Clears the access token, connected address, and stored session
-2. Emits an `error` event
-3. Throws the error so the calling code can handle it
+After connect, SDK subscribes to `accountsChanged`. If wallet account changes, it clears session and transitions to `disconnected`.
 
-All errors from the API include the HTTP status code in the message (e.g. `API error 401: ...`).
+## Error behavior
 
-## Next steps
+If any step fails, SDK clears session state, emits `error`, and rejects the current call.
 
-- [Authentication Types](./authentication-types.md) — popup vs redirect flows and which to use for your platform
+## Related
+
+- [Authentication Types](./authentication-types.md)
+- [TerminalClient API](../api-reference/terminal-client.md)

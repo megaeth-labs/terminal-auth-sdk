@@ -1,6 +1,6 @@
 {
   "name": "@megaeth-labs/terminal-auth-sdk",
-  "version": "0.5.0",
+  "version": "0.6.0-beta.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -21,6 +21,10 @@
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core.js"
+    },
+    "./react-native": {
+      "types": "./dist/react-native/index.d.ts",
+      "import": "./dist/react-native.js"
     }
   },
   "files": [
@@ -35,13 +39,37 @@
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "react-native": ">=0.79.0",
+    "expo-web-browser": "~55.0.0",
+    "expo-linking": "~55.0.0",
+    "expo-crypto": "~55.0.0",
+    "expo-secure-store": "~55.0.0",
+    "@react-native-async-storage/async-storage": "^2.1.0 || ^3.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
       "optional": true
     },
     "react-dom": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "expo-web-browser": {
+      "optional": true
+    },
+    "expo-linking": {
+      "optional": true
+    },
+    "expo-crypto": {
+      "optional": true
+    },
+    "expo-secure-store": {
+      "optional": true
+    },
+    "@react-native-async-storage/async-storage": {
       "optional": true
     }
   },

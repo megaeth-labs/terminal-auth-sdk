@@ -6,14 +6,12 @@ import type {
   Stats,
   TerminalSDKConfig,
 } from "./types";
+import type { PlatformAdapter } from "./adapter";
 import { TypedEventEmitter } from "./events";
 import { generatePKCEPair } from "./pkce";
 import { openPopupAndWaitForCode } from "./popup";
-import {
-  generateState,
-  parseRedirectResult,
-  stripRedirectParams,
-} from "./redirect";
+import { generateState } from "./redirect";
+import { createWebAdapter } from "./adapters/web";
 
 const DEFAULT_BASE_URL =
   "https://terminal-backend-git-staging-mega-eth.vercel.app";
@@ -41,6 +39,7 @@ interface RedirectSessionData {
 
 export class TerminalClient {
   private config: TerminalSDKConfig;
+  private adapter: PlatformAdapter;
   private accessToken: string | null = null;
   private tokenExpiresAt: number | null = null;
   private connectedAddress: string | null = null;
@@ -69,6 +68,7 @@ export class TerminalClient {
 
   constructor(config: TerminalSDKConfig) {
     this.config = config;
+    this.adapter = config.adapter ?? createWebAdapter();
   }
 
   async connect(
@@ -102,7 +102,7 @@ export class TerminalClient {
 
       if (!currentWallet || currentWallet !== this.connectedAddress.toLowerCase()) {
         // Wallet changed — tear down session and proceed with fresh auth
-        this.clearSession();
+        await this.clearSession();
         this.accessToken = null;
         this.profileId = null;
         this.tokenExpiresAt = null;
@@ -121,14 +121,28 @@ export class TerminalClient {
 
     this.setState("connecting");
 
-    const mode = options?.mode ?? "popup";
+    // Choose the auth mode. When the caller doesn't specify, fall back
+    // to the adapter's preferred default (first entry in `supportedModes`).
+    // When the caller does specify, validate against the adapter's
+    // capabilities so a consumer on React Native can't accidentally
+    // request popup mode and crash on `window is not defined`.
+    const mode = options?.mode ?? this.adapter.supportedModes[0];
+    if (!this.adapter.supportedModes.includes(mode)) {
+      this.setState("disconnected");
+      throw new Error(
+        `Connect mode "${mode}" is not supported by the active platform adapter ` +
+          `(supported: ${this.adapter.supportedModes.join(", ")})`
+      );
+    }
 
     try {
       const address = await this.getAddress(provider);
 
       const { challengeId, message } = await this.requestNonce(address);
 
-      const { codeVerifier, codeChallenge } = await generatePKCEPair();
+      const { codeVerifier, codeChallenge } = await generatePKCEPair(
+        this.adapter.crypto
+      );
 
       const signature = await this.signMessage(provider, address, message);
 
@@ -136,12 +150,8 @@ export class TerminalClient {
       let state: string | undefined;
 
       if (mode === "redirect") {
-        redirectUri =
-          options?.redirectUri ??
-          window.location.origin +
-            window.location.pathname +
-            window.location.search;
-        state = generateState();
+        redirectUri = options?.redirectUri ?? this.adapter.getDefaultRedirectUri();
+        state = generateState(this.adapter.crypto);
       }
 
       const verifyResult = await this.verifySignature(
@@ -176,17 +186,41 @@ export class TerminalClient {
           );
         }
 
-        this.saveRedirectData({
+        // Persist the PKCE verifier + state so the navigate-away (web) flow
+        // can recover them after the consent page redirects back. The
+        // in-process (React Native) flow doesn't strictly need this, but
+        // writing it unconditionally keeps the code path uniform.
+        await this.saveRedirectData({
           codeVerifier,
           state: state!,
-          returnUrl: window.location.href,
+          returnUrl: redirectUri!,
           connectedAddress: address,
         });
 
-        window.location.href = authorizeUrl;
+        const sessionResult = await this.adapter.openAuthSession(
+          authorizeUrl,
+          redirectUri!
+        );
 
-        // Page is navigating away; promise never resolves
-        return new Promise<ConnectResult>(() => {});
+        // Navigate-away adapters (web) never resolve this promise; the
+        // page is unloading. We only get here on in-process adapters
+        // (React Native), in which case the redirect callback came back
+        // with the code+state inside the same connect() call.
+        if (!sessionResult) {
+          throw new Error(
+            "openAuthSession returned no result on a non-navigating adapter"
+          );
+        }
+
+        if (sessionResult.state !== state) {
+          throw new Error("State mismatch — possible CSRF attack");
+        }
+
+        // Drop the ephemeral redirect data we wrote pre-flight; in-process
+        // adapters never need it again.
+        await this.loadAndClearRedirectData();
+
+        authCode = sessionResult.code;
       } else {
         const expectedOrigin = this.parseOriginOrThrow(
           this.terminalOrigin,
@@ -217,13 +251,13 @@ export class TerminalClient {
       this.profileId = result.profileId;
       this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
       this.connectedAddress = address;
-      this.saveSession();
+      await this.saveSession();
       this.subscribeAccountChanges(provider);
       this.setState("connected");
 
       return result;
     } catch (err) {
-      this.clearSession();
+      await this.clearSession();
       this.accessToken = null;
       this.profileId = null;
       this.tokenExpiresAt = null;
@@ -242,7 +276,7 @@ export class TerminalClient {
       throw new Error("Not connected");
     }
 
-    this.clearSession();
+    await this.clearSession();
     this.accessToken = null;
     this.profileId = null;
     this.tokenExpiresAt = null;
@@ -287,7 +321,7 @@ export class TerminalClient {
     }
 
     try {
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = await this.adapter.persistent.getItem(this.storageKey);
       if (!raw) return false;
 
       const data: StoredSession = JSON.parse(raw);
@@ -298,12 +332,12 @@ export class TerminalClient {
         typeof data.tokenExpiresAt !== "number" ||
         typeof data.connectedAddress !== "string"
       ) {
-        this.clearSession();
+        await this.clearSession();
         return false;
       }
 
       if (Date.now() >= data.tokenExpiresAt) {
-        this.clearSession();
+        await this.clearSession();
         return false;
       }
 
@@ -321,11 +355,11 @@ export class TerminalClient {
             !currentWallet ||
             currentWallet !== data.connectedAddress.toLowerCase()
           ) {
-            this.clearSession();
+            await this.clearSession();
             return false;
           }
         } catch {
-          this.clearSession();
+          await this.clearSession();
           return false;
         }
       }
@@ -341,7 +375,7 @@ export class TerminalClient {
 
       return true;
     } catch {
-      this.clearSession();
+      await this.clearSession();
       return false;
     }
   }
@@ -361,14 +395,12 @@ export class TerminalClient {
   }
 
   openTerminalProfile(): void {
-    if (typeof window !== "undefined") {
-      window.open(`${this.terminalOrigin}/dashboard`, "_blank");
-    }
+    this.adapter.openExternalUrl(`${this.terminalOrigin}/dashboard`);
   }
 
   // --- Private helpers ---
 
-  private saveSession(): void {
+  private async saveSession(): Promise<void> {
     if (
       !this.accessToken ||
       !this.profileId ||
@@ -384,33 +416,39 @@ export class TerminalClient {
         tokenExpiresAt: this.tokenExpiresAt,
         connectedAddress: this.connectedAddress,
       };
-      localStorage.setItem(this.storageKey, JSON.stringify(data));
+      await this.adapter.persistent.setItem(
+        this.storageKey,
+        JSON.stringify(data)
+      );
     } catch {
-      // localStorage unavailable (SSR, privacy mode, quota exceeded)
+      // Storage unavailable (SSR, privacy mode, quota exceeded, etc.)
     }
   }
 
-  private clearSession(): void {
+  private async clearSession(): Promise<void> {
     try {
-      localStorage.removeItem(this.storageKey);
+      await this.adapter.persistent.removeItem(this.storageKey);
     } catch {
-      // localStorage unavailable
+      // Storage unavailable
     }
   }
 
-  private saveRedirectData(data: RedirectSessionData): void {
+  private async saveRedirectData(data: RedirectSessionData): Promise<void> {
     try {
-      sessionStorage.setItem(this.redirectStorageKey, JSON.stringify(data));
+      await this.adapter.ephemeral.setItem(
+        this.redirectStorageKey,
+        JSON.stringify(data)
+      );
     } catch {
-      // sessionStorage unavailable
+      // Storage unavailable
     }
   }
 
-  private loadAndClearRedirectData(): RedirectSessionData | null {
+  private async loadAndClearRedirectData(): Promise<RedirectSessionData | null> {
     try {
-      const raw = sessionStorage.getItem(this.redirectStorageKey);
+      const raw = await this.adapter.ephemeral.getItem(this.redirectStorageKey);
       if (!raw) return null;
-      sessionStorage.removeItem(this.redirectStorageKey);
+      await this.adapter.ephemeral.removeItem(this.redirectStorageKey);
       return JSON.parse(raw);
     } catch {
       return null;
@@ -418,12 +456,10 @@ export class TerminalClient {
   }
 
   async handleRedirectCallback(): Promise<ConnectResult | null> {
-    const fragment = parseRedirectResult();
+    const fragment = this.adapter.consumeRedirectCallback();
     if (!fragment) return null;
 
-    stripRedirectParams();
-
-    const savedData = this.loadAndClearRedirectData();
+    const savedData = await this.loadAndClearRedirectData();
     if (!savedData) {
       throw new Error(
         "Missing redirect session data — possible CSRF or session expired"
@@ -446,7 +482,7 @@ export class TerminalClient {
       this.profileId = result.profileId;
       this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
       this.connectedAddress = savedData.connectedAddress;
-      this.saveSession();
+      await this.saveSession();
       this.setState("connected");
 
       return result;
@@ -465,7 +501,10 @@ export class TerminalClient {
       const newAddress = accounts[0]?.toLowerCase();
       const currentAddress = this.connectedAddress?.toLowerCase();
       if (!newAddress || newAddress !== currentAddress) {
-        this.clearSession();
+        // EIP-1193 listeners are sync; fire-and-forget the storage clear.
+        // In-memory state is reset synchronously below so subsequent reads
+        // see the disconnected state immediately.
+        void this.clearSession();
         this.accessToken = null;
         this.profileId = null;
         this.tokenExpiresAt = null;
