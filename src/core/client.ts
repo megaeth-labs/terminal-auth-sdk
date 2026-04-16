@@ -66,9 +66,27 @@ export class TerminalClient {
     return this.config.terminalOrigin ?? DEFAULT_TERMINAL_ORIGIN;
   }
 
+  private get useCookieTransport(): boolean {
+    const t = this.config.authTransport ?? "bearer";
+    if (t === "auto") {
+      return this.adapter.supportedModes.includes("popup");
+    }
+    return t === "cookie";
+  }
+
   constructor(config: TerminalSDKConfig) {
     this.config = config;
     this.adapter = config.adapter ?? createWebAdapter();
+
+    if (
+      config.authTransport === "cookie" &&
+      !this.adapter.supportedModes.includes("popup")
+    ) {
+      throw new Error(
+        'authTransport "cookie" is only supported on web platforms. ' +
+          'Use "bearer" or "auto" for React Native.'
+      );
+    }
   }
 
   async connect(
