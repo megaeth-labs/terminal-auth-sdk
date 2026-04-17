@@ -697,10 +697,16 @@ export class TerminalClient {
       clientId: this.config.clientId,
     });
 
-    // Prefer profileId from response body (required for cookie mode where
-    // the JWT is HttpOnly). Fall back to JWT decode for backward compat
-    // with backends that haven't been updated yet.
-    const profileId = res.profileId || this.decodeProfileId(res.accessToken);
+    // In cookie mode the JWT is never in the response body — profileId
+    // must come from the server. In bearer mode, fall back to decoding
+    // the JWT for backward compat with older backends.
+    const profileId = this.useCookieTransport
+      ? res.profileId
+      : res.profileId || this.decodeProfileId(res.accessToken);
+
+    if (!profileId) {
+      throw new Error("Server did not return profileId");
+    }
 
     return {
       accessToken: this.useCookieTransport ? "" : res.accessToken,
