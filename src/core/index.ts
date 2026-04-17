@@ -7,6 +7,7 @@ export type {
   PlatformStorage,
 } from "./adapter";
 export type {
+  AuthTransport,
   ConnectionState,
   ConnectMode,
   ConnectOptions,
