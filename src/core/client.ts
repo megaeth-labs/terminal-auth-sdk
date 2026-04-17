@@ -290,8 +290,16 @@ export class TerminalClient {
   }
 
   async disconnect(): Promise<void> {
-    if (!this.accessToken) {
+    if (!this.accessToken && !this.useCookieTransport) {
       throw new Error("Not connected");
+    }
+
+    if (this.useCookieTransport) {
+      try {
+        await this.fetchJSON("POST", "/api/v1/auth/logout", undefined, true);
+      } catch {
+        // Best effort — clear local state regardless.
+      }
     }
 
     await this.clearSession();
