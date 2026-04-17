@@ -108,7 +108,7 @@ export class TerminalClient {
     // verify the wallet still matches and attach provider for account monitoring.
     if (
       this.connectionState === "connected" &&
-      this.accessToken &&
+      (this.accessToken || this.useCookieTransport) &&
       this.connectedAddress &&
       this.profileId &&
       this.tokenExpiresAt
@@ -130,7 +130,7 @@ export class TerminalClient {
       } else {
         this.subscribeAccountChanges(provider);
         return {
-          accessToken: this.accessToken,
+          accessToken: this.useCookieTransport ? "" : this.accessToken!,
           expiresIn: Math.floor((this.tokenExpiresAt - Date.now()) / 1000),
           profileId: this.profileId,
         };
@@ -314,7 +314,7 @@ export class TerminalClient {
 
 
   async getStats(): Promise<Stats> {
-    if (!this.accessToken || !this.profileId || this.isTokenExpired()) {
+    if ((!this.accessToken && !this.useCookieTransport) || !this.profileId || this.isTokenExpired()) {
       throw new Error("Not connected");
     }
     return this.fetchJSON<Stats>(
