@@ -8,12 +8,22 @@ import { createRequire } from "module";
 // rollup-plugin-peer-deps-external, inlined here to avoid an extra dep.
 const require = createRequire(import.meta.url);
 const pkg = require("./package.json") as {
+  version?: string;
   peerDependencies?: Record<string, string>;
 };
 const peerDepNames = Object.keys(pkg.peerDependencies ?? {});
+const sdkVersion = pkg.version ?? "0.0.0-unknown";
 
 export default defineConfig({
   plugins: [react()],
+  // Inline the package version as a compile-time string literal. The SDK
+  // sends it on every backend request via the `X-Terminal-SDK-Version`
+  // header so analytics can slice funnel metrics per SDK build. Using
+  // `define` keeps `package.json` as the single source of truth and
+  // removes any chance of drift between a generated file and the bump.
+  define: {
+    __SDK_VERSION__: JSON.stringify(sdkVersion),
+  },
   build: {
     lib: {
       entry: {

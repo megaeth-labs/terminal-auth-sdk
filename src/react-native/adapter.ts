@@ -75,6 +75,7 @@ export function createExpoAdapter(
   const redirectPath = options.redirectPath ?? "terminal-auth";
 
   return {
+    name: "expo",
     persistent: options.persistent ?? createSecureStoreBackend(),
     ephemeral: options.ephemeral ?? createMemoryStorage(),
     crypto: options.crypto ?? createExpoCrypto(),

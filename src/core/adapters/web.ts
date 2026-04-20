@@ -16,6 +16,7 @@ import { parseRedirectResult, stripRedirectParams } from "../redirect";
  */
 export function createWebAdapter(): PlatformAdapter {
   return {
+    name: "web",
     persistent: webStorage(() => globalThis.localStorage),
     ephemeral: webStorage(() => globalThis.sessionStorage),
     crypto: webCrypto(),
