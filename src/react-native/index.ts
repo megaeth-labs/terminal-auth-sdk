@@ -21,6 +21,7 @@ export {
 // second import path.
 export { TerminalClient } from "../core/client";
 export type {
+  AuthTransport,
   ConnectionState,
   ConnectMode,
   ConnectOptions,

@@ -66,9 +66,27 @@ export class TerminalClient {
     return this.config.terminalOrigin ?? DEFAULT_TERMINAL_ORIGIN;
   }
 
+  private get useCookieTransport(): boolean {
+    const t = this.config.authTransport ?? "bearer";
+    if (t === "auto") {
+      return this.adapter.supportedModes.includes("popup");
+    }
+    return t === "cookie";
+  }
+
   constructor(config: TerminalSDKConfig) {
     this.config = config;
     this.adapter = config.adapter ?? createWebAdapter();
+
+    if (
+      config.authTransport === "cookie" &&
+      !this.adapter.supportedModes.includes("popup")
+    ) {
+      throw new Error(
+        'authTransport "cookie" is only supported on web platforms. ' +
+          'Use "bearer" or "auto" for React Native.'
+      );
+    }
   }
 
   async connect(
@@ -90,7 +108,7 @@ export class TerminalClient {
     // verify the wallet still matches and attach provider for account monitoring.
     if (
       this.connectionState === "connected" &&
-      this.accessToken &&
+      (this.accessToken || this.useCookieTransport) &&
       this.connectedAddress &&
       this.profileId &&
       this.tokenExpiresAt
@@ -112,7 +130,7 @@ export class TerminalClient {
       } else {
         this.subscribeAccountChanges(provider);
         return {
-          accessToken: this.accessToken,
+          accessToken: this.useCookieTransport ? "" : this.accessToken!,
           expiresIn: Math.floor((this.tokenExpiresAt - Date.now()) / 1000),
           profileId: this.profileId,
         };
@@ -272,8 +290,16 @@ export class TerminalClient {
   }
 
   async disconnect(): Promise<void> {
-    if (!this.accessToken) {
+    if (!this.accessToken && !this.useCookieTransport) {
       throw new Error("Not connected");
+    }
+
+    if (this.useCookieTransport) {
+      try {
+        await this.fetchJSON("POST", "/api/v1/auth/logout", undefined, true);
+      } catch {
+        // Best effort — clear local state regardless.
+      }
     }
 
     await this.clearSession();
@@ -288,7 +314,7 @@ export class TerminalClient {
 
 
   async getStats(): Promise<Stats> {
-    if (!this.accessToken || !this.profileId || this.isTokenExpired()) {
+    if ((!this.accessToken && !this.useCookieTransport) || !this.profileId || this.isTokenExpired()) {
       throw new Error("Not connected");
     }
     return this.fetchJSON<Stats>(
@@ -318,6 +344,10 @@ export class TerminalClient {
   async restoreSession(provider?: EIP1193Provider): Promise<boolean> {
     if (this.connectionState === "connected") {
       return true;
+    }
+
+    if (this.useCookieTransport) {
+      return this.restoreSessionFromCookie(provider);
     }
 
     try {
@@ -380,6 +410,65 @@ export class TerminalClient {
     }
   }
 
+  private async restoreSessionFromCookie(
+    provider?: EIP1193Provider
+  ): Promise<boolean> {
+    try {
+      // Validate the cookie against the backend.
+      const session = await this.fetchJSON<{
+        profileId: string;
+        scope?: string;
+        expiresIn: number;
+      }>("GET", "/api/v1/auth/session", undefined, true);
+
+      // Load local metadata (connectedAddress) from storage.
+      let connectedAddress: string | null = null;
+      const raw = await this.adapter.persistent.getItem(this.storageKey);
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          connectedAddress = data.connectedAddress ?? null;
+        } catch {
+          // ignore parse errors
+        }
+      }
+
+      // Verify wallet match if provider is available.
+      if (provider && connectedAddress) {
+        try {
+          const accounts = (await provider.request({
+            method: "eth_accounts",
+          })) as string[];
+          const currentWallet = accounts[0]?.toLowerCase();
+          if (
+            !currentWallet ||
+            currentWallet !== connectedAddress.toLowerCase()
+          ) {
+            await this.clearSession();
+            return false;
+          }
+        } catch {
+          await this.clearSession();
+          return false;
+        }
+      }
+
+      this.accessToken = null;
+      this.profileId = session.profileId;
+      this.tokenExpiresAt = Date.now() + session.expiresIn * 1000;
+      this.connectedAddress = connectedAddress;
+      if (provider) {
+        this.subscribeAccountChanges(provider);
+      }
+      this.setState("connected");
+      return true;
+    } catch {
+      // Session endpoint returned 401 or network error.
+      await this.clearSession();
+      return false;
+    }
+  }
+
   on<K extends keyof SDKEvents>(
     event: K,
     callback: (payload: SDKEvents[K]) => void
@@ -402,7 +491,7 @@ export class TerminalClient {
 
   private async saveSession(): Promise<void> {
     if (
-      !this.accessToken ||
+      (!this.accessToken && !this.useCookieTransport) ||
       !this.profileId ||
       !this.tokenExpiresAt ||
       !this.connectedAddress
@@ -411,7 +500,7 @@ export class TerminalClient {
     }
     try {
       const data: StoredSession = {
-        accessToken: this.accessToken,
+        accessToken: this.useCookieTransport ? "" : this.accessToken!,
         profileId: this.profileId,
         tokenExpiresAt: this.tokenExpiresAt,
         connectedAddress: this.connectedAddress,
@@ -600,6 +689,7 @@ export class TerminalClient {
       accessToken: string;
       tokenType: string;
       expiresIn: number;
+      profileId?: string;
     }>("POST", "/api/v1/auth/token", {
       grantType: "authorization_code",
       code,
@@ -607,10 +697,19 @@ export class TerminalClient {
       clientId: this.config.clientId,
     });
 
-    const profileId = this.decodeProfileId(res.accessToken);
+    // In cookie mode the JWT is never in the response body — profileId
+    // must come from the server. In bearer mode, fall back to decoding
+    // the JWT for backward compat with older backends.
+    const profileId = this.useCookieTransport
+      ? res.profileId
+      : res.profileId || this.decodeProfileId(res.accessToken);
+
+    if (!profileId) {
+      throw new Error("Server did not return profileId");
+    }
 
     return {
-      accessToken: res.accessToken,
+      accessToken: this.useCookieTransport ? "" : res.accessToken,
       expiresIn: res.expiresIn,
       profileId,
     };
@@ -640,7 +739,7 @@ export class TerminalClient {
       "Content-Type": "application/json",
     };
 
-    if (authenticated && this.accessToken) {
+    if (authenticated && this.accessToken && !this.useCookieTransport) {
       headers["Authorization"] = `Bearer ${this.accessToken}`;
     }
 
@@ -653,6 +752,7 @@ export class TerminalClient {
         headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
+        ...(this.useCookieTransport ? { credentials: "include" as RequestCredentials } : {}),
       });
 
       if (!res.ok) {
