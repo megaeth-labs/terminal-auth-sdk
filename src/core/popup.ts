@@ -46,21 +46,30 @@ export function openPopupAndWaitForCode(options: PopupOptions): Promise<string> 
 
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== normalizedExpectedOrigin) return;
-      if (event.source !== popup) return;
 
       const code = event.data?.code;
       if (typeof code !== "string" || code.length === 0) return;
 
       cleanup();
-      popup.close();
+      try {
+        popup.close();
+      } catch {
+        // COOP can sever the WindowProxy; the popup closes itself anyway.
+      }
       resolve(code);
     };
 
     const closedPoll = setInterval(() => {
-      if (!settled && popup.closed) {
+      if (settled || !popup.closed) return;
+      clearInterval(closedPoll);
+      // Grace period: a successful flow does postMessage(code) then window.close(),
+      // so popup.closed can flip true before the queued message event runs. Wait
+      // briefly to let onMessage win the race before reporting a user-cancel.
+      setTimeout(() => {
+        if (settled) return;
         cleanup();
         reject(new Error("User closed the popup"));
-      }
+      }, 300);
     }, POLL_INTERVAL_MS);
 
     const timeout = setTimeout(() => {
