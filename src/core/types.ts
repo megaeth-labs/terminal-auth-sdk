@@ -43,6 +43,7 @@ interface RequestArguments {
   interface Stats {
     rank: number;
     totalPoints: number;
+    isLocked: boolean;
   }
 
   interface ConnectResult {
