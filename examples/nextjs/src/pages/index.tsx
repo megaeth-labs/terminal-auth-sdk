@@ -153,14 +153,14 @@ function StatsPanel() {
             {stats.totalPoints}
           </li>
           <li>
-            <span style={{ opacity: 0.6 }}>isLocked</span>:{" "}
+            <span style={{ opacity: 0.6 }}>isBoosted</span>:{" "}
             <span
               style={{
-                color: stats.isLocked ? "#26de96" : "#dfd9d9",
+                color: stats.isBoosted ? "#26de96" : "#dfd9d9",
                 fontWeight: 600,
               }}
             >
-              {String(stats.isLocked)}
+              {String(stats.isBoosted)}
             </span>
           </li>
         </ul>
