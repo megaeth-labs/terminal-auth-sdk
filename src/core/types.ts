@@ -41,6 +41,7 @@ interface RequestArguments {
   interface Stats {
     rank: number;
     totalPoints: number;
+    isBoosted: boolean;
   }
 
   interface ConnectResult {
