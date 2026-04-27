@@ -76,5 +76,21 @@ import { TerminalWidget } from "@megaeth-labs/terminal-auth-sdk";
 | `theme` | `TerminalWidgetTheme` | No | `"dark"` | Built-in theme |
 | `classNames` | `Partial<Record<TerminalWidgetSlot, string>>` | No | — | Slot class overrides |
 | `styles` | `Partial<Record<TerminalWidgetSlot, CSSProperties>>` | No | — | Slot style overrides |
+| `mode` | `ConnectMode` (`"popup" \| "redirect"`) | No | `"popup"` (web) | Auth flow mode. React Native only supports `"redirect"`. |
+| `redirectUri` | `string` | No | Current page URL | Only used when `mode === "redirect"`. Overrides the adapter default. Ignored in popup mode. |
 
 Available slots: `root`, `logo`, `info`, `address`, `rank`, `divider`, `points`, `label`, `arrow`.
+
+### Redirect-mode usage
+
+```tsx
+// Explicit redirect URI
+<TerminalWidget
+  provider={window.ethereum}
+  mode="redirect"
+  redirectUri="https://app.example.com/auth/callback"
+/>
+
+// Redirect mode, fall back to current page as the return URL
+<TerminalWidget provider={window.ethereum} mode="redirect" />
+```

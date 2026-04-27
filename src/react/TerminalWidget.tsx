@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import type { EIP1193Provider, Stats } from "../core/types";
+import type { ConnectMode, EIP1193Provider, Stats } from "../core/types";
 import { useTerminal } from "./useTerminal";
 
 export type TerminalWidgetTheme = "dark" | "light" | "accent";
@@ -23,6 +23,8 @@ interface TerminalWidgetProps {
   theme?: TerminalWidgetTheme;
   classNames?: Partial<Record<TerminalWidgetSlot, string>>;
   styles?: Partial<Record<TerminalWidgetSlot, CSSProperties>>;
+  mode?: ConnectMode;
+  redirectUri?: string;
 }
 
 const themeTokens: Record<
@@ -201,6 +203,8 @@ export function TerminalWidget({
   theme = "dark",
   classNames,
   styles,
+  mode,
+  redirectUri,
 }: TerminalWidgetProps) {
   const { state, address, connect, getStats } = useTerminal();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -232,7 +236,14 @@ export function TerminalWidget({
   const handleConnect = async () => {
     if (!provider) return;
     try {
-      await connect(provider);
+      const options =
+        mode !== undefined || redirectUri !== undefined
+          ? {
+              ...(mode !== undefined && { mode }),
+              ...(redirectUri !== undefined && { redirectUri }),
+            }
+          : undefined;
+      await connect(provider, options);
     } catch (err) {
       onError?.(err instanceof Error ? err : new Error(String(err)));
     }
