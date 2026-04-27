@@ -19,9 +19,9 @@ import { createWebAdapter } from "./adapters/web";
 declare const __SDK_VERSION__: string;
 
 const DEFAULT_BASE_URL =
-  "https://terminal-backend-git-staging-mega-eth.vercel.app";
+  "https://terminal-backend-six.vercel.app";
 const DEFAULT_TERMINAL_ORIGIN =
-  "https://staging-terminal.megaeth.com";
+  "https://terminal.megaeth.com";
 
 type SDKEvents = {
   stateChange: ConnectionState;

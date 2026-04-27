@@ -65,7 +65,7 @@ The first build takes 5–15 minutes because it compiles the native side of the 
 2. Enter email → tap "Send code" → check your email for the OTP
 3. Enter the code → tap "Verify" → Privy creates an embedded wallet
 4. Screen transitions to "Connect to Terminal", showing the Privy user ID
-5. Tap "Connect to Terminal" → an in-app browser opens the staging consent page
+5. Tap "Connect to Terminal" → an in-app browser opens the production consent page
 6. Approve on the consent page → the browser closes, `state` flips to `connected`, the wallet address appears
 7. `getStats()` fires automatically; rank + points appear
 8. Force-quit the app and reopen — the session restores from `expo-secure-store` and you land directly on the connected view
