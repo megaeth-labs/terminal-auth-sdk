@@ -489,7 +489,7 @@ export class TerminalClient {
   }
 
   openTerminalProfile(): void {
-    this.adapter.openExternalUrl(`${this.terminalOrigin}/dashboard`);
+    this.adapter.openExternalUrl(`${this.terminalOrigin}/cluster`);
   }
 
   // --- Private helpers ---
