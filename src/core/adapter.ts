@@ -33,6 +33,14 @@ export interface AuthSessionSuccess {
 }
 
 export interface PlatformAdapter {
+  /**
+   * Short adapter identifier sent on every backend request via the
+   * `X-Terminal-SDK-Adapter` header so backend analytics can distinguish
+   * traffic sourced from the web adapter vs. Expo vs. a consumer-defined
+   * custom adapter. Expected values: `"web"`, `"expo"`, or a short
+   * consumer-chosen slug for bespoke adapters.
+   */
+  name: string;
   /** Long-lived session storage (web: `localStorage`). */
   persistent: PlatformStorage;
   /** Single-flow scratch storage (web: `sessionStorage`). */

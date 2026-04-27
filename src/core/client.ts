@@ -13,6 +13,11 @@ import { openPopupAndWaitForCode } from "./popup";
 import { generateState } from "./redirect";
 import { createWebAdapter } from "./adapters/web";
 
+// Injected by Vite `define` (see `vite.config.ts`) — the identifier is
+// replaced with a string literal at bundle time, so no runtime global
+// actually exists. Declared here so both `tsc` passes type-check.
+declare const __SDK_VERSION__: string;
+
 const DEFAULT_BASE_URL =
   "https://terminal-backend-git-staging-mega-eth.vercel.app";
 const DEFAULT_TERMINAL_ORIGIN =
@@ -737,6 +742,13 @@ export class TerminalClient {
   ): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
+      // Analytics headers so the backend can slice funnel metrics per
+      // SDK build and platform. Backend treats them as optional, so
+      // older SDK builds that predate this change still authenticate
+      // correctly — they just show up as `sdk_version=unknown`.
+      "X-Terminal-SDK-Version": __SDK_VERSION__,
+      "X-Terminal-SDK-Platform": sdkPlatform(this.adapter),
+      "X-Terminal-SDK-Adapter": this.adapter.name,
     };
 
     if (authenticated && this.accessToken && !this.useCookieTransport) {
@@ -766,4 +778,19 @@ export class TerminalClient {
       clearTimeout(timeout);
     }
   }
+}
+
+/**
+ * Derive the coarse-grained platform label from the adapter. Adapter
+ * names are free-form (consumers can supply custom adapters), so we map
+ * the two first-party adapter names to their canonical platforms and
+ * fall back to the adapter name otherwise. `"unknown"` guards against
+ * an adapter that omits `name` — the interface now requires it, but
+ * TypeScript can't enforce that on arbitrary JS consumers.
+ */
+function sdkPlatform(adapter: PlatformAdapter): string {
+  const name = adapter.name?.toLowerCase?.() ?? "";
+  if (name === "expo") return "react-native";
+  if (name === "web") return "web";
+  return name || "unknown";
 }
