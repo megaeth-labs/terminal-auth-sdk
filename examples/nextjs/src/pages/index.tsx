@@ -1,5 +1,10 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { TerminalWidget, type EIP1193Provider } from "@megaeth-labs/terminal-auth-sdk";
+import {
+  TerminalWidget,
+  useTerminal,
+  type EIP1193Provider,
+  type Stats,
+} from "@megaeth-labs/terminal-auth-sdk";
 import { useAccount } from "wagmi";
 import { useState, useEffect } from "react";
 import type { NextPage } from "next";
@@ -11,11 +16,10 @@ const Home: NextPage = () => {
   const [provider, setProvider] = useState<EIP1193Provider | undefined>();
 
   useEffect(() => {
-    if (!connector) {
-      setProvider(undefined);
-      return;
-    }
+    if (!connector) return;
+    let cancelled = false;
     connector.getProvider().then((p) => {
+      if (cancelled) return;
       const candidate = p as Partial<EIP1193Provider>;
       if (
         candidate &&
@@ -26,6 +30,9 @@ const Home: NextPage = () => {
         setProvider(candidate as EIP1193Provider);
       }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [connector]);
 
   return (
@@ -82,11 +89,84 @@ const Home: NextPage = () => {
               }}
               onError={(err) => console.error("Terminal error:", err)}
             />
+
+            <h3 style={{ margin: 0 }}>getStats() — read:stats scope</h3>
+            <StatsPanel />
           </div>
         )}
       </main>
     </div>
   );
 };
+
+function StatsPanel() {
+  const { state, getStats } = useTerminal();
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (state !== "connected") return;
+    let cancelled = false;
+    getStats()
+      .then((s) => {
+        if (!cancelled) {
+          setStats(s);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state, getStats]);
+
+  if (state !== "connected") return null;
+
+  return (
+    <div
+      style={{
+        minWidth: "320px",
+        padding: "16px 20px",
+        borderRadius: "10px",
+        border: "1px solid #313131",
+        background: "#19191a",
+        color: "#dfd9d9",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+        fontSize: "13px",
+        lineHeight: 1.6,
+      }}
+    >
+      {error ? (
+        <div style={{ color: "#ff5c5c" }}>{error}</div>
+      ) : !stats ? (
+        <div style={{ opacity: 0.6 }}>Loading…</div>
+      ) : (
+        <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          <li>
+            <span style={{ opacity: 0.6 }}>rank</span>: {stats.rank}
+          </li>
+          <li>
+            <span style={{ opacity: 0.6 }}>totalPoints</span>:{" "}
+            {stats.totalPoints}
+          </li>
+          <li>
+            <span style={{ opacity: 0.6 }}>isLocked</span>:{" "}
+            <span
+              style={{
+                color: stats.isLocked ? "#26de96" : "#dfd9d9",
+                fontWeight: 600,
+              }}
+            >
+              {String(stats.isLocked)}
+            </span>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export default Home;
