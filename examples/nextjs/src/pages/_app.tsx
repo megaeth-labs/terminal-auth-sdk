@@ -13,8 +13,12 @@ const queryClient = new QueryClient();
 
 const terminalConfig = {
   clientId: process.env.NEXT_PUBLIC_TERMINAL_CLIENT_ID ?? "1",
-  ...(process.env.NEXT_PUBLIC_TERMINAL_API_URL && { baseUrl: process.env.NEXT_PUBLIC_TERMINAL_API_URL }),
-  ...(process.env.NEXT_PUBLIC_TERMINAL_ORIGIN && { terminalOrigin: process.env.NEXT_PUBLIC_TERMINAL_ORIGIN }),
+  ...(process.env.NEXT_PUBLIC_TERMINAL_API_URL && {
+    baseUrl: process.env.NEXT_PUBLIC_TERMINAL_API_URL,
+  }),
+  ...(process.env.NEXT_PUBLIC_TERMINAL_ORIGIN && {
+    terminalOrigin: process.env.NEXT_PUBLIC_TERMINAL_ORIGIN,
+  }),
 };
 
 function MyApp({ Component, pageProps }: AppProps) {
