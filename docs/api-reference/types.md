@@ -16,6 +16,7 @@ interface TerminalSDKConfig {
   baseUrl?: string;
   terminalOrigin?: string;
   adapter?: PlatformAdapter;
+  authTransport?: AuthTransport;
 }
 ```
 
@@ -25,6 +26,15 @@ interface TerminalSDKConfig {
 | `baseUrl` | `string` | No | Override API base URL |
 | `terminalOrigin` | `string` | No | Override Terminal origin used for consent/profile URLs |
 | `adapter` | `PlatformAdapter` | No | Custom platform adapter (storage/crypto/auth-session behavior) |
+| `authTransport` | `AuthTransport` | No | Credential transport. Defaults to `"bearer"` |
+
+## AuthTransport
+
+```ts
+type AuthTransport = "bearer";
+```
+
+`"bearer"` is the only supported auth transport. Cookie-backed transports were not shipped as public SDK behavior; TypeScript does not accept them and runtime configuration rejects non-`"bearer"` values.
 
 ## ConnectMode
 

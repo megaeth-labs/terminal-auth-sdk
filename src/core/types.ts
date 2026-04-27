@@ -15,11 +15,9 @@ interface RequestArguments {
 
   /**
    * How the SDK sends credentials to the backend.
-   * - `"bearer"` — Authorization header only (default, existing behavior).
-   * - `"cookie"` — HttpOnly cookie set by the backend. Web only.
-   * - `"auto"` — Cookie on web, bearer on React Native.
+   * - `"bearer"` — Authorization header only.
    */
-  type AuthTransport = "bearer" | "cookie" | "auto";
+  type AuthTransport = "bearer";
 
   interface TerminalSDKConfig {
     clientId: string;
@@ -34,7 +32,7 @@ interface RequestArguments {
     adapter?: PlatformAdapter;
     /**
      * Controls how auth credentials are transmitted to the backend.
-     * Defaults to `"bearer"` for backward compatibility.
+     * Defaults to `"bearer"`, the only currently supported transport.
      */
     authTransport?: AuthTransport;
   }
@@ -75,4 +73,14 @@ interface RequestArguments {
     redirectUri?: string;
   }
 
-  export type { AuthTransport, TerminalSDKConfig, Stats, TerminalSDK, ConnectionState, EIP1193Provider, ConnectResult, ConnectMode, ConnectOptions };
+  export type {
+    AuthTransport,
+    TerminalSDKConfig,
+    Stats,
+    TerminalSDK,
+    ConnectionState,
+    EIP1193Provider,
+    ConnectResult,
+    ConnectMode,
+    ConnectOptions,
+  };
