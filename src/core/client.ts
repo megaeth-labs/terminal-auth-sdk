@@ -12,6 +12,11 @@ import { generatePKCEPair } from "./pkce";
 import { openPopupAndWaitForCode } from "./popup";
 import { generateState } from "./redirect";
 import { createWebAdapter } from "./adapters/web";
+import type { StoredSession } from "./session-coordinator";
+import {
+  readStoredSession,
+  withSessionCoordination,
+} from "./session-coordinator";
 
 // Injected by Vite `define` (see `vite.config.ts`) — the identifier is
 // replaced with a string literal at bundle time, so no runtime global
@@ -27,19 +32,6 @@ type SDKEvents = {
   stateChange: ConnectionState;
   error: Error;
 };
-
-interface StoredSession {
-  accessToken: string;
-  profileId: string;
-  tokenExpiresAt: number;
-  connectedAddress: string;
-  // Optional so sessions persisted by older SDK versions (no refresh token
-  // in the wire response) still parse cleanly. Restore treats missing
-  // fields as "no refresh available" — once the access token expires the
-  // user has to log in again.
-  refreshToken?: string;
-  refreshTokenExpiresAt?: number;
-}
 
 // Refresh proactively if the access token expires within this window.
 // Small enough that we don't burn refresh tokens unnecessarily, large
@@ -307,10 +299,36 @@ export class TerminalClient {
       throw new Error("Not connected");
     }
 
-    await this.clearSession();
+    const refreshToken = this.refreshToken;
+    let revokeError: Error | null = null;
+
+    try {
+      await withSessionCoordination(
+        this.adapter.name,
+        this.storageKey,
+        async () => {
+          try {
+            await this.revokeRefreshSession(refreshToken);
+          } catch (err) {
+            revokeError = toError(err);
+          } finally {
+            await this.clearSession();
+          }
+        }
+      );
+    } catch (err) {
+      revokeError = toError(err);
+      await this.clearSession();
+    }
+
     this.resetSessionState();
     this.unsubscribeAccountChanges();
     this.setState("disconnected");
+
+    if (revokeError) {
+      this.emitter.emit("error", revokeError);
+      throw revokeError;
+    }
   }
 
 
@@ -612,10 +630,25 @@ export class TerminalClient {
       const newAddress = accounts[0]?.toLowerCase();
       const currentAddress = this.connectedAddress?.toLowerCase();
       if (!newAddress || newAddress !== currentAddress) {
-        // EIP-1193 listeners are sync; fire-and-forget the storage clear.
-        // In-memory state is reset synchronously below so subsequent reads
-        // see the disconnected state immediately.
-        void this.clearSession();
+        const refreshToken = this.refreshToken;
+        // EIP-1193 listeners are sync; fire-and-forget the server revoke and
+        // storage clear. In-memory state is reset synchronously below.
+        void withSessionCoordination(
+          this.adapter.name,
+          this.storageKey,
+          async () => {
+            try {
+              await this.revokeRefreshSession(refreshToken);
+            } catch (err) {
+              this.emitter.emit("error", toError(err));
+            } finally {
+              await this.clearSession();
+            }
+          }
+        ).catch((err: unknown) => {
+          this.emitter.emit("error", toError(err));
+          void this.clearSession();
+        });
         this.resetSessionState();
         this.unsubscribeAccountChanges();
         this.setState("disconnected");
@@ -680,33 +713,133 @@ export class TerminalClient {
   }
 
   private async refreshAccessTokenInner(): Promise<void> {
-    if (!this.refreshToken) {
+    const startingRefreshToken = this.refreshToken;
+    if (!startingRefreshToken) {
       throw new Error("No refresh token available");
     }
-    const res = await this.fetchJSON<{
-      accessToken: string;
-      tokenType: string;
-      expiresIn: number;
-      refreshToken?: string;
-      refreshExpiresIn?: number;
-      profileId?: string;
-    }>("POST", "/api/v1/auth/refresh", {
-      refreshToken: this.refreshToken,
-    });
 
-    this.accessToken = res.accessToken;
-    this.tokenExpiresAt = Date.now() + res.expiresIn * 1000;
-    if (res.refreshToken) {
-      this.refreshToken = res.refreshToken;
+    await withSessionCoordination(
+      this.adapter.name,
+      this.storageKey,
+      async (coordinated) => {
+        if (coordinated) {
+          const alreadyFresh = await this.syncSessionFromStorageBeforeRefresh(
+            startingRefreshToken
+          );
+          if (alreadyFresh) return;
+        }
+
+        if (!this.refreshToken) {
+          throw new Error("No refresh token available");
+        }
+
+        const res = await this.fetchJSON<{
+          accessToken: string;
+          tokenType: string;
+          expiresIn: number;
+          refreshToken?: string;
+          refreshExpiresIn?: number;
+          profileId?: string;
+        }>("POST", "/api/v1/auth/refresh", {
+          refreshToken: this.refreshToken,
+        });
+
+        this.accessToken = res.accessToken;
+        this.tokenExpiresAt = Date.now() + res.expiresIn * 1000;
+        if (res.refreshToken) {
+          this.refreshToken = res.refreshToken;
+        }
+        if (typeof res.refreshExpiresIn === "number") {
+          this.refreshTokenExpiresAt = Date.now() + res.refreshExpiresIn * 1000;
+        }
+        // Persist BEFORE resolving so a crash here doesn't lose the rotated
+        // refresh token. Without this guarantee a tab-close mid-rotation
+        // would leave the old (already-rotated-past) token in storage and
+        // the next refresh attempt would 401.
+        await this.saveSession();
+      }
+    );
+  }
+
+  private async syncSessionFromStorageBeforeRefresh(
+    startingRefreshToken: string
+  ): Promise<boolean> {
+    const stored = await readStoredSession(
+      this.adapter.persistent,
+      this.storageKey
+    );
+    if (!stored) {
+      this.markDisconnectedFromExternalSessionChange();
+      throw new Error("Session was cleared in another tab");
     }
-    if (typeof res.refreshExpiresIn === "number") {
-      this.refreshTokenExpiresAt = Date.now() + res.refreshExpiresIn * 1000;
+
+    if (!this.storedSessionMatchesCurrentPrincipal(stored)) {
+      this.markDisconnectedFromExternalSessionChange();
+      throw new Error("Session changed in another tab");
     }
-    // Persist BEFORE resolving so a crash here doesn't lose the rotated
-    // refresh token. Without this guarantee a tab-close mid-rotation
-    // would leave the old (already-rotated-past) token in storage and
-    // the next refresh attempt would 401.
-    await this.saveSession();
+
+    if (
+      stored.refreshToken &&
+      stored.refreshToken !== startingRefreshToken
+    ) {
+      this.hydrateStoredSession(stored);
+      return !this.isAccessTokenExpiringSoon();
+    }
+
+    return false;
+  }
+
+  private hydrateStoredSession(data: StoredSession): void {
+    this.accessToken = data.accessToken;
+    this.profileId = data.profileId;
+    this.tokenExpiresAt = data.tokenExpiresAt;
+    this.connectedAddress = data.connectedAddress;
+    this.refreshToken = data.refreshToken ?? null;
+    this.refreshTokenExpiresAt = data.refreshTokenExpiresAt ?? null;
+  }
+
+  private storedSessionMatchesCurrentPrincipal(data: StoredSession): boolean {
+    if (
+      this.profileId &&
+      data.profileId &&
+      data.profileId !== this.profileId
+    ) {
+      return false;
+    }
+    if (
+      this.connectedAddress &&
+      data.connectedAddress.toLowerCase() !==
+        this.connectedAddress.toLowerCase()
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  private markDisconnectedFromExternalSessionChange(): void {
+    this.resetSessionState();
+    this.unsubscribeAccountChanges();
+    this.setState("disconnected");
+  }
+
+  private async revokeRefreshSession(
+    refreshToken: string | null
+  ): Promise<void> {
+    if (!refreshToken) return;
+
+    const res = await this.doFetch(
+      "POST",
+      "/api/v1/auth/logout",
+      { refreshToken },
+      false
+    );
+
+    if (res.ok || res.status === 401) {
+      return;
+    }
+
+    const text = await res.text().catch(() => "");
+    throw new Error(`API error ${res.status}: ${text}`);
   }
 
   /**
@@ -960,4 +1093,8 @@ function sdkPlatform(adapter: PlatformAdapter): string {
   if (name === "expo") return "react-native";
   if (name === "web") return "web";
   return name || "unknown";
+}
+
+function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
 }
