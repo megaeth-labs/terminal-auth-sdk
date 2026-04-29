@@ -12,6 +12,11 @@ import { generatePKCEPair } from "./pkce";
 import { openPopupAndWaitForCode } from "./popup";
 import { generateState } from "./redirect";
 import { createWebAdapter } from "./adapters/web";
+import type { StoredSession } from "./session-coordinator";
+import {
+  readStoredSession,
+  withSessionCoordination,
+} from "./session-coordinator";
 
 // Injected by Vite `define` (see `vite.config.ts`) — the identifier is
 // replaced with a string literal at bundle time, so no runtime global
@@ -28,12 +33,10 @@ type SDKEvents = {
   error: Error;
 };
 
-interface StoredSession {
-  accessToken: string;
-  profileId: string;
-  tokenExpiresAt: number;
-  connectedAddress: string;
-}
+// Refresh proactively if the access token expires within this window.
+// Small enough that we don't burn refresh tokens unnecessarily, large
+// enough that an in-flight request never lands with a just-expired token.
+const REFRESH_BEFORE_EXPIRY_MS = 60 * 1000;
 
 interface RedirectSessionData {
   codeVerifier: string;
@@ -42,11 +45,24 @@ interface RedirectSessionData {
   connectedAddress: string;
 }
 
+// Internal token-exchange result. Carries refresh-token fields that the
+// public ConnectResult intentionally hides (refresh handling is an SDK
+// concern, not something consumers should reach into).
+interface TokenExchangeResult {
+  accessToken: string;
+  expiresIn: number;
+  refreshToken?: string;
+  refreshExpiresIn?: number;
+  profileId: string;
+}
+
 export class TerminalClient {
   private config: TerminalSDKConfig;
   private adapter: PlatformAdapter;
   private accessToken: string | null = null;
   private tokenExpiresAt: number | null = null;
+  private refreshToken: string | null = null;
+  private refreshTokenExpiresAt: number | null = null;
   private connectedAddress: string | null = null;
   private profileId: string | null = null;
   private connectionState: ConnectionState = "disconnected";
@@ -54,6 +70,9 @@ export class TerminalClient {
   private connectedProvider: EIP1193Provider | null = null;
   private accountsChangedHandler: ((accounts: string[]) => void) | null = null;
   private pendingConnect: Promise<ConnectResult> | null = null;
+  // In-flight refresh dedupe: concurrent expired-request retries collapse
+  // to a single network call. Mirrors the pendingConnect pattern above.
+  private pendingRefresh: Promise<void> | null = null;
 
   private get storageKey(): string {
     return `terminal_session_${this.config.clientId}`;
@@ -115,10 +134,7 @@ export class TerminalClient {
       if (!currentWallet || currentWallet !== this.connectedAddress.toLowerCase()) {
         // Wallet changed — tear down session and proceed with fresh auth
         await this.clearSession();
-        this.accessToken = null;
-        this.profileId = null;
-        this.tokenExpiresAt = null;
-        this.connectedAddress = null;
+        this.resetSessionState();
         this.unsubscribeAccountChanges();
         this.setState("disconnected");
       } else {
@@ -259,21 +275,16 @@ export class TerminalClient {
 
       const result = await this.exchangeToken(authCode, codeVerifier);
 
-      this.accessToken = result.accessToken;
-      this.profileId = result.profileId;
-      this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
+      this.hydrateTokens(result);
       this.connectedAddress = address;
       await this.saveSession();
       this.subscribeAccountChanges(provider);
       this.setState("connected");
 
-      return result;
+      return this.toConnectResult(result);
     } catch (err) {
       await this.clearSession();
-      this.accessToken = null;
-      this.profileId = null;
-      this.tokenExpiresAt = null;
-      this.connectedAddress = null;
+      this.resetSessionState();
       this.unsubscribeAccountChanges();
       this.setState("disconnected");
       const error =
@@ -288,19 +299,50 @@ export class TerminalClient {
       throw new Error("Not connected");
     }
 
-    await this.clearSession();
-    this.accessToken = null;
-    this.profileId = null;
-    this.tokenExpiresAt = null;
-    this.connectedAddress = null;
+    const refreshToken = this.refreshToken;
+    let revokeError: Error | null = null;
+
+    try {
+      await withSessionCoordination(
+        this.adapter.name,
+        this.storageKey,
+        async () => {
+          try {
+            await this.revokeRefreshSession(refreshToken);
+          } catch (err) {
+            revokeError = toError(err);
+          } finally {
+            await this.clearSession();
+          }
+        }
+      );
+    } catch (err) {
+      revokeError = toError(err);
+      await this.clearSession();
+    }
+
+    this.resetSessionState();
     this.unsubscribeAccountChanges();
     this.setState("disconnected");
+
+    if (revokeError) {
+      this.emitter.emit("error", revokeError);
+      throw revokeError;
+    }
   }
 
 
 
   async getStats(): Promise<Stats> {
-    if (!this.accessToken || !this.profileId || this.isTokenExpired()) {
+    // We accept an expired access token here when a refresh token is
+    // available — fetchJSON will silently rotate before sending.
+    // "Not connected" should mean "no credentials at all", not "the
+    // access token happens to be past its TTL".
+    if (
+      !this.accessToken ||
+      !this.profileId ||
+      (this.isTokenExpired() && !this.isRefreshTokenUsable())
+    ) {
       throw new Error("Not connected");
     }
     return this.fetchJSON<Stats>(
@@ -349,7 +391,16 @@ export class TerminalClient {
         return false;
       }
 
-      if (Date.now() >= data.tokenExpiresAt) {
+      const now = Date.now();
+      const accessValid = now < data.tokenExpiresAt;
+      const refreshUsable =
+        typeof data.refreshToken === "string" &&
+        data.refreshToken.length > 0 &&
+        (typeof data.refreshTokenExpiresAt !== "number" ||
+          now < data.refreshTokenExpiresAt);
+
+      // Both access and refresh dead → nothing to restore.
+      if (!accessValid && !refreshUsable) {
         await this.clearSession();
         return false;
       }
@@ -381,6 +432,44 @@ export class TerminalClient {
       this.profileId = data.profileId;
       this.tokenExpiresAt = data.tokenExpiresAt;
       this.connectedAddress = data.connectedAddress;
+      this.refreshToken = data.refreshToken ?? null;
+      this.refreshTokenExpiresAt = data.refreshTokenExpiresAt ?? null;
+
+      // Legacy migration: a still-valid access token with no refresh
+      // token means this session was minted by a pre-refresh-token SDK
+      // build (or the backend's pre-refresh-token deploy). One-shot
+      // /auth/upgrade swaps it for a fresh access + refresh pair with
+      // a real refresh-token chain. Failure is treated as "session
+      // unrecoverable, log in again" — same fallback as today's UX
+      // before this change shipped.
+      //
+      // TODO(refresh-token-migration): remove this branch ~30d after
+      // backend deploy when no legacy 24h tokens remain in any client's
+      // localStorage. The /auth/upgrade endpoint is being retired on
+      // the same schedule; see backend handler comment.
+      if (accessValid && !refreshUsable) {
+        try {
+          await this.upgradeLegacySession();
+        } catch {
+          await this.clearSession();
+          this.resetSessionState();
+          return false;
+        }
+      } else if (this.isAccessTokenExpiringSoon() && this.isRefreshTokenUsable()) {
+        // Non-legacy path: access is dead or about to die — rotate
+        // before handing control back to the caller. Doing this here
+        // means the first authenticated call after restore lands on a
+        // fresh token instead of paying a guaranteed 401-and-retry
+        // round-trip.
+        try {
+          await this.refreshAccessToken();
+        } catch {
+          await this.clearSession();
+          this.resetSessionState();
+          return false;
+        }
+      }
+
       if (provider) {
         this.subscribeAccountChanges(provider);
       }
@@ -389,6 +478,7 @@ export class TerminalClient {
       return true;
     } catch {
       await this.clearSession();
+      this.resetSessionState();
       return false;
     }
   }
@@ -413,6 +503,25 @@ export class TerminalClient {
 
   // --- Private helpers ---
 
+  private hydrateTokens(result: TokenExchangeResult): void {
+    this.accessToken = result.accessToken;
+    this.profileId = result.profileId;
+    this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
+    this.refreshToken = result.refreshToken ?? null;
+    this.refreshTokenExpiresAt =
+      typeof result.refreshExpiresIn === "number"
+        ? Date.now() + result.refreshExpiresIn * 1000
+        : null;
+  }
+
+  private toConnectResult(result: TokenExchangeResult): ConnectResult {
+    return {
+      accessToken: result.accessToken,
+      expiresIn: result.expiresIn,
+      profileId: result.profileId,
+    };
+  }
+
   private async saveSession(): Promise<void> {
     if (
       !this.accessToken ||
@@ -429,6 +538,15 @@ export class TerminalClient {
         tokenExpiresAt: this.tokenExpiresAt,
         connectedAddress: this.connectedAddress,
       };
+      // Only persist refresh fields when present so older sessions stay
+      // recognisable on disk and the JSON shape matches what restoreSession
+      // expects. Missing fields = "no refresh available", same as before.
+      if (this.refreshToken) {
+        data.refreshToken = this.refreshToken;
+      }
+      if (this.refreshTokenExpiresAt !== null) {
+        data.refreshTokenExpiresAt = this.refreshTokenExpiresAt;
+      }
       await this.adapter.persistent.setItem(
         this.storageKey,
         JSON.stringify(data)
@@ -491,14 +609,12 @@ export class TerminalClient {
         savedData.codeVerifier
       );
 
-      this.accessToken = result.accessToken;
-      this.profileId = result.profileId;
-      this.tokenExpiresAt = Date.now() + result.expiresIn * 1000;
+      this.hydrateTokens(result);
       this.connectedAddress = savedData.connectedAddress;
       await this.saveSession();
       this.setState("connected");
 
-      return result;
+      return this.toConnectResult(result);
     } catch (err) {
       this.setState("disconnected");
       const error = err instanceof Error ? err : new Error(String(err));
@@ -514,14 +630,26 @@ export class TerminalClient {
       const newAddress = accounts[0]?.toLowerCase();
       const currentAddress = this.connectedAddress?.toLowerCase();
       if (!newAddress || newAddress !== currentAddress) {
-        // EIP-1193 listeners are sync; fire-and-forget the storage clear.
-        // In-memory state is reset synchronously below so subsequent reads
-        // see the disconnected state immediately.
-        void this.clearSession();
-        this.accessToken = null;
-        this.profileId = null;
-        this.tokenExpiresAt = null;
-        this.connectedAddress = null;
+        const refreshToken = this.refreshToken;
+        // EIP-1193 listeners are sync; fire-and-forget the server revoke and
+        // storage clear. In-memory state is reset synchronously below.
+        void withSessionCoordination(
+          this.adapter.name,
+          this.storageKey,
+          async () => {
+            try {
+              await this.revokeRefreshSession(refreshToken);
+            } catch (err) {
+              this.emitter.emit("error", toError(err));
+            } finally {
+              await this.clearSession();
+            }
+          }
+        ).catch((err: unknown) => {
+          this.emitter.emit("error", toError(err));
+          void this.clearSession();
+        });
+        this.resetSessionState();
         this.unsubscribeAccountChanges();
         this.setState("disconnected");
       }
@@ -540,9 +668,219 @@ export class TerminalClient {
     this.accountsChangedHandler = null;
   }
 
+  private resetSessionState(): void {
+    this.accessToken = null;
+    this.profileId = null;
+    this.tokenExpiresAt = null;
+    this.refreshToken = null;
+    this.refreshTokenExpiresAt = null;
+    this.connectedAddress = null;
+  }
+
   private setState(state: ConnectionState): void {
     this.connectionState = state;
     this.emitter.emit("stateChange", state);
+  }
+
+  private isAccessTokenExpiringSoon(): boolean {
+    if (this.tokenExpiresAt === null) return true;
+    return Date.now() >= this.tokenExpiresAt - REFRESH_BEFORE_EXPIRY_MS;
+  }
+
+  private isRefreshTokenUsable(): boolean {
+    if (!this.refreshToken) return false;
+    if (this.refreshTokenExpiresAt === null) {
+      // Server didn't tell us refresh expiry — trust the token's own
+      // signature lifetime and let the server reject it if expired.
+      return true;
+    }
+    return Date.now() < this.refreshTokenExpiresAt;
+  }
+
+  /**
+   * Rotate the access (and refresh) tokens by calling /auth/refresh.
+   * Concurrent callers collapse to a single network round-trip via the
+   * pendingRefresh guard. Awaits saveSession before resolving so a tab
+   * close mid-rotation never leaves the SDK with the old refresh token
+   * in storage and the new one lost.
+   */
+  private refreshAccessToken(): Promise<void> {
+    if (this.pendingRefresh) return this.pendingRefresh;
+    this.pendingRefresh = this.refreshAccessTokenInner().finally(() => {
+      this.pendingRefresh = null;
+    });
+    return this.pendingRefresh;
+  }
+
+  private async refreshAccessTokenInner(): Promise<void> {
+    const startingRefreshToken = this.refreshToken;
+    if (!startingRefreshToken) {
+      throw new Error("No refresh token available");
+    }
+
+    await withSessionCoordination(
+      this.adapter.name,
+      this.storageKey,
+      async (coordinated) => {
+        if (coordinated) {
+          const alreadyFresh = await this.syncSessionFromStorageBeforeRefresh(
+            startingRefreshToken
+          );
+          if (alreadyFresh) return;
+        }
+
+        if (!this.refreshToken) {
+          throw new Error("No refresh token available");
+        }
+
+        const res = await this.fetchJSON<{
+          accessToken: string;
+          tokenType: string;
+          expiresIn: number;
+          refreshToken?: string;
+          refreshExpiresIn?: number;
+          profileId?: string;
+        }>("POST", "/api/v1/auth/refresh", {
+          refreshToken: this.refreshToken,
+        });
+
+        this.accessToken = res.accessToken;
+        this.tokenExpiresAt = Date.now() + res.expiresIn * 1000;
+        if (res.refreshToken) {
+          this.refreshToken = res.refreshToken;
+        }
+        if (typeof res.refreshExpiresIn === "number") {
+          this.refreshTokenExpiresAt = Date.now() + res.refreshExpiresIn * 1000;
+        }
+        // Persist BEFORE resolving so a crash here doesn't lose the rotated
+        // refresh token. Without this guarantee a tab-close mid-rotation
+        // would leave the old (already-rotated-past) token in storage and
+        // the next refresh attempt would 401.
+        await this.saveSession();
+      }
+    );
+  }
+
+  private async syncSessionFromStorageBeforeRefresh(
+    startingRefreshToken: string
+  ): Promise<boolean> {
+    const stored = await readStoredSession(
+      this.adapter.persistent,
+      this.storageKey
+    );
+    if (!stored) {
+      this.markDisconnectedFromExternalSessionChange();
+      throw new Error("Session was cleared in another tab");
+    }
+
+    if (!this.storedSessionMatchesCurrentPrincipal(stored)) {
+      this.markDisconnectedFromExternalSessionChange();
+      throw new Error("Session changed in another tab");
+    }
+
+    if (
+      stored.refreshToken &&
+      stored.refreshToken !== startingRefreshToken
+    ) {
+      this.hydrateStoredSession(stored);
+      return !this.isAccessTokenExpiringSoon();
+    }
+
+    return false;
+  }
+
+  private hydrateStoredSession(data: StoredSession): void {
+    this.accessToken = data.accessToken;
+    this.profileId = data.profileId;
+    this.tokenExpiresAt = data.tokenExpiresAt;
+    this.connectedAddress = data.connectedAddress;
+    this.refreshToken = data.refreshToken ?? null;
+    this.refreshTokenExpiresAt = data.refreshTokenExpiresAt ?? null;
+  }
+
+  private storedSessionMatchesCurrentPrincipal(data: StoredSession): boolean {
+    if (
+      this.profileId &&
+      data.profileId &&
+      data.profileId !== this.profileId
+    ) {
+      return false;
+    }
+    if (
+      this.connectedAddress &&
+      data.connectedAddress.toLowerCase() !==
+        this.connectedAddress.toLowerCase()
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  private markDisconnectedFromExternalSessionChange(): void {
+    this.resetSessionState();
+    this.unsubscribeAccountChanges();
+    this.setState("disconnected");
+  }
+
+  private async revokeRefreshSession(
+    refreshToken: string | null
+  ): Promise<void> {
+    if (!refreshToken) return;
+
+    const res = await this.doFetch(
+      "POST",
+      "/api/v1/auth/logout",
+      { refreshToken },
+      false
+    );
+
+    if (res.ok || res.status === 401) {
+      return;
+    }
+
+    const text = await res.text().catch(() => "");
+    throw new Error(`API error ${res.status}: ${text}`);
+  }
+
+  /**
+   * One-shot migration for sessions persisted by a pre-refresh-token SDK
+   * build. Calls POST /auth/upgrade with the legacy access token in the
+   * Authorization header (the backend's standard Auth() middleware
+   * validates it via the access secret). On success we replace the
+   * single-token state with a fresh access + refresh pair and persist.
+   *
+   * Only valid as long as the legacy access token is still alive — caller
+   * (restoreSession) gates on accessValid before invoking. Backend rejects
+   * new short access tokens (typ:"access") at this endpoint to prevent a
+   * leaked 15-min credential being promoted into a 30-day refresh; that
+   * rejection bubbles up here as an API error and the caller clears.
+   *
+   * TODO(refresh-token-migration): delete alongside the /auth/upgrade
+   * endpoint ~30d after backend deploy.
+   */
+  private async upgradeLegacySession(): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error("No access token available for upgrade");
+    }
+    const res = await this.fetchJSON<{
+      accessToken: string;
+      tokenType: string;
+      expiresIn: number;
+      refreshToken?: string;
+      refreshExpiresIn?: number;
+      profileId?: string;
+    }>("POST", "/api/v1/auth/upgrade", undefined, true);
+
+    this.accessToken = res.accessToken;
+    this.tokenExpiresAt = Date.now() + res.expiresIn * 1000;
+    if (res.refreshToken) {
+      this.refreshToken = res.refreshToken;
+    }
+    if (typeof res.refreshExpiresIn === "number") {
+      this.refreshTokenExpiresAt = Date.now() + res.refreshExpiresIn * 1000;
+    }
+    // Persist before resolving — same reasoning as refreshAccessTokenInner.
+    await this.saveSession();
   }
 
   private parseOriginOrThrow(value: string, label: string): string {
@@ -608,11 +946,13 @@ export class TerminalClient {
   private async exchangeToken(
     code: string,
     codeVerifier: string
-  ): Promise<ConnectResult> {
+  ): Promise<TokenExchangeResult> {
     const res = await this.fetchJSON<{
       accessToken: string;
       tokenType: string;
       expiresIn: number;
+      refreshToken?: string;
+      refreshExpiresIn?: number;
       profileId?: string;
     }>("POST", "/api/v1/auth/token", {
       grantType: "authorization_code",
@@ -630,6 +970,8 @@ export class TerminalClient {
     return {
       accessToken: res.accessToken,
       expiresIn: res.expiresIn,
+      refreshToken: res.refreshToken,
+      refreshExpiresIn: res.refreshExpiresIn,
       profileId,
     };
   }
@@ -654,6 +996,59 @@ export class TerminalClient {
     body?: object,
     authenticated = false
   ): Promise<T> {
+    // Proactive refresh: if the bearer is expired (or about to be) and
+    // we have a refresh credential, rotate first instead of paying a
+    // guaranteed 401-and-retry round-trip. Refresh failure is not fatal
+    // here — the call still goes out, the reactive 401 path below gets
+    // one more attempt.
+    if (
+      authenticated &&
+      this.accessToken &&
+      this.isAccessTokenExpiringSoon() &&
+      this.isRefreshTokenUsable()
+    ) {
+      try {
+        await this.refreshAccessToken();
+      } catch {
+        // Fall through.
+      }
+    }
+
+    let res = await this.doFetch(method, path, body, authenticated);
+
+    // Reactive 401 retry: server rejected our token. If we have a
+    // refresh credential, rotate and replay once. Capped at one retry
+    // — a second 401 propagates out as the original API error.
+    if (
+      res.status === 401 &&
+      authenticated &&
+      this.isRefreshTokenUsable()
+    ) {
+      try {
+        await this.refreshAccessToken();
+        res = await this.doFetch(method, path, body, authenticated);
+      } catch {
+        // Refresh itself failed — fall through with the most recent
+        // response (the original 401) so the caller sees a meaningful
+        // error rather than a refresh-side network failure.
+      }
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`API error ${res.status}: ${text}`);
+    }
+
+    const json = await res.json();
+    return (json.data ?? json) as T;
+  }
+
+  private async doFetch(
+    method: string,
+    path: string,
+    body: object | undefined,
+    authenticated: boolean
+  ): Promise<Response> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       // Analytics headers so the backend can slice funnel metrics per
@@ -673,20 +1068,12 @@ export class TerminalClient {
     const timeout = setTimeout(() => controller.abort(), 30_000);
 
     try {
-      const res = await fetch(`${this.baseUrl}${path}`, {
+      return await fetch(`${this.baseUrl}${path}`, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`API error ${res.status}: ${text}`);
-      }
-
-      const json = await res.json();
-      return (json.data ?? json) as T;
     } finally {
       clearTimeout(timeout);
     }
@@ -706,4 +1093,8 @@ function sdkPlatform(adapter: PlatformAdapter): string {
   if (name === "expo") return "react-native";
   if (name === "web") return "web";
   return name || "unknown";
+}
+
+function toError(err: unknown): Error {
+  return err instanceof Error ? err : new Error(String(err));
 }
