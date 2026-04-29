@@ -417,11 +417,32 @@ export class TerminalClient {
       this.refreshToken = data.refreshToken ?? null;
       this.refreshTokenExpiresAt = data.refreshTokenExpiresAt ?? null;
 
-      // Access token is dead or about to die — rotate before handing
-      // control back to the caller. Doing this here means the first
-      // authenticated call after restore lands on a fresh token instead
-      // of paying a guaranteed 401-and-retry round-trip.
-      if (this.isAccessTokenExpiringSoon() && this.isRefreshTokenUsable()) {
+      // Legacy migration: a still-valid access token with no refresh
+      // token means this session was minted by a pre-refresh-token SDK
+      // build (or the backend's pre-refresh-token deploy). One-shot
+      // /auth/upgrade swaps it for a fresh access + refresh pair with
+      // a real refresh-token chain. Failure is treated as "session
+      // unrecoverable, log in again" — same fallback as today's UX
+      // before this change shipped.
+      //
+      // TODO(refresh-token-migration): remove this branch ~30d after
+      // backend deploy when no legacy 24h tokens remain in any client's
+      // localStorage. The /auth/upgrade endpoint is being retired on
+      // the same schedule; see backend handler comment.
+      if (accessValid && !refreshUsable) {
+        try {
+          await this.upgradeLegacySession();
+        } catch {
+          await this.clearSession();
+          this.resetSessionState();
+          return false;
+        }
+      } else if (this.isAccessTokenExpiringSoon() && this.isRefreshTokenUsable()) {
+        // Non-legacy path: access is dead or about to die — rotate
+        // before handing control back to the caller. Doing this here
+        // means the first authenticated call after restore lands on a
+        // fresh token instead of paying a guaranteed 401-and-retry
+        // round-trip.
         try {
           await this.refreshAccessToken();
         } catch {
@@ -685,6 +706,47 @@ export class TerminalClient {
     // refresh token. Without this guarantee a tab-close mid-rotation
     // would leave the old (already-rotated-past) token in storage and
     // the next refresh attempt would 401.
+    await this.saveSession();
+  }
+
+  /**
+   * One-shot migration for sessions persisted by a pre-refresh-token SDK
+   * build. Calls POST /auth/upgrade with the legacy access token in the
+   * Authorization header (the backend's standard Auth() middleware
+   * validates it via the access secret). On success we replace the
+   * single-token state with a fresh access + refresh pair and persist.
+   *
+   * Only valid as long as the legacy access token is still alive — caller
+   * (restoreSession) gates on accessValid before invoking. Backend rejects
+   * new short access tokens (typ:"access") at this endpoint to prevent a
+   * leaked 15-min credential being promoted into a 30-day refresh; that
+   * rejection bubbles up here as an API error and the caller clears.
+   *
+   * TODO(refresh-token-migration): delete alongside the /auth/upgrade
+   * endpoint ~30d after backend deploy.
+   */
+  private async upgradeLegacySession(): Promise<void> {
+    if (!this.accessToken) {
+      throw new Error("No access token available for upgrade");
+    }
+    const res = await this.fetchJSON<{
+      accessToken: string;
+      tokenType: string;
+      expiresIn: number;
+      refreshToken?: string;
+      refreshExpiresIn?: number;
+      profileId?: string;
+    }>("POST", "/api/v1/auth/upgrade", undefined, true);
+
+    this.accessToken = res.accessToken;
+    this.tokenExpiresAt = Date.now() + res.expiresIn * 1000;
+    if (res.refreshToken) {
+      this.refreshToken = res.refreshToken;
+    }
+    if (typeof res.refreshExpiresIn === "number") {
+      this.refreshTokenExpiresAt = Date.now() + res.refreshExpiresIn * 1000;
+    }
+    // Persist before resolving — same reasoning as refreshAccessTokenInner.
     await this.saveSession();
   }
 
