@@ -56,6 +56,10 @@ interface TokenExchangeResult {
   profileId: string;
 }
 
+interface SaveSessionOptions {
+  required?: boolean;
+}
+
 export class TerminalClient {
   private config: TerminalSDKConfig;
   private adapter: PlatformAdapter;
@@ -522,13 +526,16 @@ export class TerminalClient {
     };
   }
 
-  private async saveSession(): Promise<void> {
+  private async saveSession(options: SaveSessionOptions = {}): Promise<void> {
     if (
       !this.accessToken ||
       !this.profileId ||
       !this.tokenExpiresAt ||
       !this.connectedAddress
     ) {
+      if (options.required) {
+        throw new Error("[terminal-auth-sdk] Cannot persist incomplete session");
+      }
       return;
     }
     try {
@@ -551,8 +558,31 @@ export class TerminalClient {
         this.storageKey,
         JSON.stringify(data)
       );
-    } catch {
+    } catch (err) {
+      if (options.required) {
+        const error = toError(err);
+        throw new Error(
+          `[terminal-auth-sdk] Failed to persist session: ${error.message}`
+        );
+      }
       // Storage unavailable (SSR, privacy mode, quota exceeded, etc.)
+    }
+  }
+
+  private async persistRefreshSessionOrDisconnect(): Promise<void> {
+    try {
+      await this.saveSession({ required: true });
+    } catch (err) {
+      const error = toError(err);
+      const refreshToken = this.refreshToken;
+      await this.clearSession();
+      if (refreshToken) {
+        await this.revokeRefreshSession(refreshToken).catch(() => {});
+      }
+      this.resetSessionState();
+      this.unsubscribeAccountChanges();
+      this.setState("disconnected");
+      throw error;
     }
   }
 
@@ -756,7 +786,7 @@ export class TerminalClient {
         // refresh token. Without this guarantee a tab-close mid-rotation
         // would leave the old (already-rotated-past) token in storage and
         // the next refresh attempt would 401.
-        await this.saveSession();
+        await this.persistRefreshSessionOrDisconnect();
       }
     );
   }
@@ -880,7 +910,7 @@ export class TerminalClient {
       this.refreshTokenExpiresAt = Date.now() + res.refreshExpiresIn * 1000;
     }
     // Persist before resolving — same reasoning as refreshAccessTokenInner.
-    await this.saveSession();
+    await this.persistRefreshSessionOrDisconnect();
   }
 
   private parseOriginOrThrow(value: string, label: string): string {
